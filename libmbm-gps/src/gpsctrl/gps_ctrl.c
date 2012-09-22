@@ -63,7 +63,7 @@ static int initializeGpsCtrlContext(int loglevel)
     context->loglevel = loglevel;
     context->isInitialized = 1;
 
-    ALOGI("Initialized new gps ctrl context");
+    LOGI("Initialized new gps ctrl context");
 
     return 0;
 }
@@ -242,7 +242,7 @@ static void onATTimeout(void)
 GpsCtrlContext* get_gpsctrl_context(void)
 {
     if (!global_gpsctrl_context.isInitialized)
-        ALOGE("%s, GPSCtrl context not initialized. Possible problems ahead!", __FUNCTION__);
+        LOGE("%s, GPSCtrl context not initialized. Possible problems ahead!", __FUNCTION__);
     return &global_gpsctrl_context;
 }
 
@@ -303,7 +303,7 @@ char *gpsctrl_get_at_device(void)
 int gpsctrl_init(int loglevel)
 {
     if (initializeGpsCtrlContext(loglevel)) {
-        ALOGE("initializeGpsCtrlContext() failed!");
+        LOGE("initializeGpsCtrlContext() failed!");
         return -1;
     }
 

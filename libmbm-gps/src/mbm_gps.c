@@ -1090,7 +1090,7 @@ static int mbm_gps_init(GpsCallbacks * callbacks)
     char nmea_dev[PROPERTY_VALUE_MAX];
     char at_dev[PROPERTY_VALUE_MAX];
 
-    ALOGI("MBM-GPS version: %s", MBM_GPS_VERSION);
+    LOGI("MBM-GPS version: %s", MBM_GPS_VERSION);
 
     context->gps_started = 0;
     context->gps_initiated = 0;
@@ -1537,7 +1537,7 @@ static struct hw_module_methods_t mbm_gps_module_methods = {
     .open = mbm_open_gps
 };
 
-struct hw_module_t HAL_MODULE_INFO_SYM = {
+const struct hw_module_t HAL_MODULE_INFO_SYM = {
     .tag = HARDWARE_MODULE_TAG,
     .version_major = 1,
     .version_minor = 0,

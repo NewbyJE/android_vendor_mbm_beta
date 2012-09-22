@@ -286,7 +286,7 @@ static char* convertResponseToUtf8(const char *mbmargs){
     char *output = NULL;
     char *str, *utf8;
     if(!(output = malloc(strlen(mbmargs)))) {
-        ALOGE("%s() Failed to allocate memory", __func__);
+        LOGE("%s() Failed to allocate memory", __func__);
         return NULL;
     }
     output[0] = '\0';
@@ -297,7 +297,7 @@ static char* convertResponseToUtf8(const char *mbmargs){
         if (!(forward = strstr(forward, "\"")))
             break;
         if (!(str = strndup(back, forward-back))) {
-            ALOGE("%s() Failed to allocate memory", __func__);
+            LOGE("%s() Failed to allocate memory", __func__);
             free(output);
             return NULL;
         }
@@ -309,7 +309,7 @@ static char* convertResponseToUtf8(const char *mbmargs){
         /* take everything inside the ucs2 string (without the "") and convert it and put the utf8 in output */
         if (!(forward = strstr(forward, "\""))) {
             free(output);
-            ALOGE("%s() Bad ucs2 message, couldn't parse it:%s", __func__, mbmargs);
+            LOGE("%s() Bad ucs2 message, couldn't parse it:%s", __func__, mbmargs);
             return NULL;
         }
         /* The case when we have "" */
@@ -321,12 +321,12 @@ static char* convertResponseToUtf8(const char *mbmargs){
         }
         if (!(str = strndup(back, forward-back))) {
             free(output);
-            ALOGE("%s() Failed to allocate memory", __func__);
+            LOGE("%s() Failed to allocate memory", __func__);
             return NULL;
         }
         if (!(utf8 = convertUcs2ToUtf8(str))) {
             free(str);
-            ALOGE("%s() Failed to allocate memory", __func__);
+            LOGE("%s() Failed to allocate memory", __func__);
             free(output);
             return NULL;
         }
@@ -358,10 +358,10 @@ void onNetworkTimeReceived(const char *s)
     int tz, dst;
 
     if (!strstr(s,"/")) {
-        ALOGI("%s() Bad format, converting string from ucs2: %s", __func__, s);
+        LOGI("%s() Bad format, converting string from ucs2: %s", __func__, s);
         ucs = convertResponseToUtf8(s);
         if (NULL == ucs) {
-            ALOGE("%s() Failed converting string from ucs2", __func__);
+            LOGE("%s() Failed converting string from ucs2", __func__);
             return;
         }
         s = (const char *)ucs;
@@ -369,29 +369,29 @@ void onNetworkTimeReceived(const char *s)
 
     tok = line = strdup(s);
     if (NULL == tok) {
-        ALOGE("%s() Failed to allocate memory", __func__);
+        LOGE("%s() Failed to allocate memory", __func__);
         free(ucs);
         return;
     }
 
     at_tok_start(&tok);
 
-    ALOGD("%s() Got nitz: %s", __func__, s);
+    LOGD("%s() Got nitz: %s", __func__, s);
     if (at_tok_nextint(&tok, &tz) != 0)
-        ALOGE("%s() Failed to parse NITZ tz %s", __func__, s);
+        LOGE("%s() Failed to parse NITZ tz %s", __func__, s);
     else if (at_tok_nextstr(&tok, &time) != 0)
-        ALOGE("%s() Failed to parse NITZ time %s", __func__, s);
+        LOGE("%s() Failed to parse NITZ time %s", __func__, s);
     else if (at_tok_nextstr(&tok, &timestamp) != 0)
-        ALOGE("%s() Failed to parse NITZ timestamp %s", __func__, s);
+        LOGE("%s() Failed to parse NITZ timestamp %s", __func__, s);
     else {
         if (at_tok_nextint(&tok, &dst) != 0) {
             dst = 0;
-            ALOGE("%s() Failed to parse NITZ dst, fallbacking to dst=0 %s",
+            LOGE("%s() Failed to parse NITZ dst, fallbacking to dst=0 %s",
              __func__, s);
         }
         if (!(asprintf(&response, "%s%+03d,%02d", time + 2, tz + (dst * 4), dst))) {
             free(line);
-            ALOGE("%s() Failed to allocate string", __func__);
+            LOGE("%s() Failed to allocate string", __func__);
             free(ucs);
             return;
         }
@@ -401,7 +401,7 @@ void onNetworkTimeReceived(const char *s)
                                       response, sizeof(char *));
             strncpy(last_nitz_time, response, strlen(response));
         } else
-            ALOGD("%s() Discarding NITZ since it hasn't changed since last update",
+            LOGD("%s() Discarding NITZ since it hasn't changed since last update",
              __func__);
 
         free(response);
@@ -749,7 +749,7 @@ void pollSignalStrength(void *arg)
     (void) arg;
 
     if (getSignalStrength(&signalStrength) < 0)
-        ALOGE("%s() Polling the signal strength failed", __func__);
+        LOGE("%s() Polling the signal strength failed", __func__);
     else
         RIL_onUnsolicitedResponse(RIL_UNSOL_SIGNAL_STRENGTH,
                                   &signalStrength, sizeof(RIL_SignalStrength_v6));
@@ -869,7 +869,7 @@ void requestSetNetworkSelectionAutomatic(void *data, size_t datalen,
        a "+COPS: 0" response. */
     if (!at_tok_hasmore(&line)) {
         if (mode == 1) {
-            ALOGD("%s() Changing manual to automatic network mode", __func__);
+            LOGD("%s() Changing manual to automatic network mode", __func__);
             goto do_auto;
         } else
             goto check_reg;
@@ -882,7 +882,7 @@ void requestSetNetworkSelectionAutomatic(void *data, size_t datalen,
     /* A "+COPS: 0, n" response is also possible. */
     if (!at_tok_hasmore(&line)) {
         if (mode == 1) {
-            ALOGD("%s() Changing manual to automatic network mode", __func__);
+            LOGD("%s() Changing manual to automatic network mode", __func__);
             goto do_auto;
         } else
             goto check_reg;
@@ -897,7 +897,7 @@ void requestSetNetworkSelectionAutomatic(void *data, size_t datalen,
        else let it continue the already pending scan */
     if (operator && strlen(operator) == 0) {
         if (mode == 1) {
-            ALOGD("%s() Changing manual to automatic network mode", __func__);
+            LOGD("%s() Changing manual to automatic network mode", __func__);
             goto do_auto;
         } else
             goto check_reg;
@@ -905,10 +905,10 @@ void requestSetNetworkSelectionAutomatic(void *data, size_t datalen,
 
     /* Operator found */
     if (mode == 1) {
-        ALOGD("%s() Changing manual to automatic network mode", __func__);
+        LOGD("%s() Changing manual to automatic network mode", __func__);
         goto do_auto;
     } else {
-        ALOGD("%s() Already in automatic mode with known operator, trigger a new network scan",
+        LOGD("%s() Already in automatic mode with known operator, trigger a new network scan",
 	    __func__);
         goto do_auto;
     }
@@ -942,7 +942,7 @@ check_reg:
 
     /* If scanning has stopped, then perform a new scan */
     if (mode == 0) {
-        ALOGD("%s() Already in automatic mode, but not currently scanning on CS,"
+        LOGD("%s() Already in automatic mode, but not currently scanning on CS,"
 	     "trigger a new network scan", __func__);
         goto do_auto;
     }
@@ -972,13 +972,13 @@ check_reg:
 
     /* If scanning has stopped, then perform a new scan */
     if (mode == 0) {
-        ALOGD("%s() Already in automatic mode, but not currently scanning on PS,"
+        LOGD("%s() Already in automatic mode, but not currently scanning on PS,"
 	     "trigger a new network scan", __func__);
         goto do_auto;
     }
     else
     {
-        ALOGD("%s() Already in automatic mode and scanning", __func__);
+        LOGD("%s() Already in automatic mode and scanning", __func__);
         goto finish_scan;
     }
 
@@ -1148,7 +1148,7 @@ no_current:
         p = remaining;
 
         if (line == NULL) {
-            ALOGE("%s() Null pointer while parsing COPS response."
+            LOGE("%s() Null pointer while parsing COPS response."
 	         "This should not happen.", __func__);
             break;
         }
@@ -1258,15 +1258,15 @@ void requestSetPreferredNetworkType(void *data, size_t datalen,
     case PREF_NET_TYPE_GSM_WCDMA_AUTO:
     case PREF_NET_TYPE_GSM_WCDMA:
         arg = PREF_NET_TYPE_3G;
-        ALOGD("[%s] network type = auto", __FUNCTION__);
+        LOGD("[%s] network type = auto", __FUNCTION__);
         break;
     case PREF_NET_TYPE_GSM_ONLY:
         arg = PREF_NET_TYPE_2G_ONLY;
-        ALOGD("[%s] network type = 2g only", __FUNCTION__);
+        LOGD("[%s] network type = 2g only", __FUNCTION__);
         break;
     case PREF_NET_TYPE_WCDMA:
         arg = PREF_NET_TYPE_3G_ONLY;
-        ALOGD("[%s] network type = 3g only", __FUNCTION__);
+        LOGD("[%s] network type = 3g only", __FUNCTION__);
         break;
     default:
         errno = RIL_E_MODE_NOT_SUPPORTED;
@@ -1390,7 +1390,7 @@ finally:
     return;
 
 error:
-    ALOGE("%s() Must never return error when radio is on", __func__);
+    LOGE("%s() Must never return error when radio is on", __func__);
     RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
     goto finally;
 }
@@ -1408,7 +1408,7 @@ void requestSignalStrength(void *data, size_t datalen, RIL_Token t)
     RIL_SignalStrength_v6 signalStrength;
 
     if (getSignalStrength(&signalStrength) < 0) {
-        ALOGE("%s() Must never return an error when radio is on", __func__);
+        LOGE("%s() Must never return an error when radio is on", __func__);
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
     } else
         RIL_onRequestComplete(t, RIL_E_SUCCESS, &signalStrength,
@@ -1532,7 +1532,7 @@ char *getNetworkType(int def){
         err = at_send_command_singleline("AT+CGEQNEG=%d", "+CGEQNEG:", &p_response, RIL_CID_IP);
 
         if (err != AT_NOERROR)
-            ALOGE("%s() Allocation for, or sending, CGEQNEG failed."
+            LOGE("%s() Allocation for, or sending, CGEQNEG failed."
 	         "Using default value specified by calling function", __func__);
         else {
             line = p_response->p_intermediates->line;
@@ -1557,7 +1557,7 @@ char *getNetworkType(int def){
                 goto finally;
 
             at_response_free(p_response);
-            ALOGI("Max speed %i/%i, UL/DL", ul, dl);
+            LOGI("Max speed %i/%i, UL/DL", ul, dl);
 
             network = CGREG_ACT_UTRAN;
             if (dl > 384)
@@ -1569,7 +1569,7 @@ char *getNetworkType(int def){
         }
     }
     else if (gsm_rinfo) {
-        ALOGD("%s() Using 2G info: %d", __func__, gsm_rinfo);
+        LOGD("%s() Using 2G info: %d", __func__, gsm_rinfo);
         if (gsm_rinfo == 1)
             network = CGREG_ACT_GSM;
         else
@@ -1666,7 +1666,7 @@ void requestGprsRegistrationState(int request, void *data,
     p = line;
     err = at_tok_charcounter(line, ',', &commas);
     if (err < 0) {
-        ALOGE("%s() at_tok_charcounter failed", __func__);
+        LOGE("%s() at_tok_charcounter failed", __func__);
         goto error;
     }
 
@@ -1732,7 +1732,7 @@ void requestGprsRegistrationState(int request, void *data,
         break;
 
     default:
-        ALOGE("%s() Invalid input", __func__);
+        LOGE("%s() Invalid input", __func__);
         goto error;
     }
 
@@ -1806,7 +1806,7 @@ finally:
     return;
 
 error:
-    ALOGE("%s Must never return an error when radio is on", __func__);
+    LOGE("%s Must never return an error when radio is on", __func__);
     RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
     goto finally;
 }
@@ -2003,7 +2003,7 @@ finally:
     return;
 
 error:
-    ALOGE("%s() Must never return an error when radio is on", __func__);
+    LOGE("%s() Must never return an error when radio is on", __func__);
     RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
     goto finally;
 }

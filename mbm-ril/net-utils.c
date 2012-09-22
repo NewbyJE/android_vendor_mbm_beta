@@ -50,7 +50,7 @@ int ifc_init(void)
     if (ifc_ctl_sock == -1) {
         ifc_ctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
         if (ifc_ctl_sock < 0) {
-            ALOGE("%s() socket() failed: %s", __func__, strerror(errno));
+            LOGE("%s() socket() failed: %s", __func__, strerror(errno));
             ifc_ctl_sock = -1;
         }
     }
@@ -131,21 +131,21 @@ int ifc_configure(const char *ifname,
     ifc_init();
 
     if (ifc_up(ifname)) {
-        ALOGE("%s() Failed to turn on interface %s: %s", __func__,
+        LOGE("%s() Failed to turn on interface %s: %s", __func__,
             ifname,
             strerror(errno));
         ifc_close();
         return -1;
     }
     if (ifc_set_addr(ifname, address)) {
-        ALOGE("%s() Failed to set ipaddr %s: %s", __func__,
+        LOGE("%s() Failed to set ipaddr %s: %s", __func__,
             ipaddr_to_string(address), strerror(errno));
         ifc_down(ifname);
         ifc_close();
         return -1;
     }
     if (ifc_set_mask(ifname, netmask)) {
-        ALOGE("%s() failed to set netmask %s: %s", __func__,
+        LOGE("%s() failed to set netmask %s: %s", __func__,
             ipaddr_to_string(netmask), strerror(errno));
         ifc_down(ifname);
         ifc_close();

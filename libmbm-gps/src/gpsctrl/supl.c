@@ -226,7 +226,7 @@ static char *getCharEncoding(void)
     err = at_send_command_singleline("AT+CSCS?", "+CSCS:", &p_response);
 
     if (err < 0) {
-        ALOGE("%s failed to read AT+CSCS?", __FUNCTION__);
+        LOGE("%s failed to read AT+CSCS?", __FUNCTION__);
         EXIT;
         return NULL;
     }

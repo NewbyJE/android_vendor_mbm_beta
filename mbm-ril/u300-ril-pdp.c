@@ -90,7 +90,7 @@ static int parse_ip_information(char** addresses, char** gateways, char** dnses,
     err = at_tok_charcounter(p_response->p_intermediates->line, '(',
             &number_of_entries);
     if (err < 0 || number_of_entries == 0) {
-        ALOGE("%s() Syntax error. Could not parse output", __func__);
+        LOGE("%s() Syntax error. Could not parse output", __func__);
         goto error;
     }
 
@@ -109,7 +109,7 @@ static int parse_ip_information(char** addresses, char** gateways, char** dnses,
         intermediate_line = remaining_intermediate_line;
 
         if (line_tok == NULL) {
-            ALOGD("%s: No more connection info", __func__);
+            LOGD("%s: No more connection info", __func__);
             break;
         }
 
@@ -133,15 +133,15 @@ static int parse_ip_information(char** addresses, char** gateways, char** dnses,
                 tmp_pointer = realloc(*addresses,
                         strlen(address) + strlen(*addresses) + 2);
                 if (NULL == tmp_pointer) {
-                    ALOGE("%s() Failed to allocate memory for addresses", __func__);
+                    LOGE("%s() Failed to allocate memory for addresses", __func__);
                     goto error;
                 }
                 *addresses = tmp_pointer;
                 sprintf(*addresses, "%s %s", *addresses, address);
             }
-            ALOGD("%s() IP Address: %s", __func__, address);
+            LOGD("%s() IP Address: %s", __func__, address);
             if (inet_pton(AF_INET, address, addr) <= 0) {
-                ALOGE("%s() inet_pton() failed for %s!", __func__, address);
+                LOGE("%s() inet_pton() failed for %s!", __func__, address);
                 goto error;
             }
             break;
@@ -153,29 +153,29 @@ static int parse_ip_information(char** addresses, char** gateways, char** dnses,
                 tmp_pointer = realloc(*gateways,
                         strlen(address) + strlen(*gateways) + 2);
                 if (NULL == tmp_pointer) {
-                    ALOGE("%s() Failed to allocate memory for gateways", __func__);
+                    LOGE("%s() Failed to allocate memory for gateways", __func__);
                     goto error;
                 }
                 *gateways = tmp_pointer;
                 sprintf(*gateways, "%s %s", *gateways, address);
             }
-            ALOGD("%s() GW: %s", __func__, address);
+            LOGD("%s() GW: %s", __func__, address);
             if (inet_pton(AF_INET, address, gateway) <= 0) {
-                ALOGE("%s() Failed inet_pton for gw %s!", __func__, address);
+                LOGE("%s() Failed inet_pton for gw %s!", __func__, address);
                 goto error;
             }
             break;
 
         case DNS:
             dnscnt++;
-            ALOGD("%s() DNS%d: %s", __func__, dnscnt, address);
+            LOGD("%s() DNS%d: %s", __func__, dnscnt, address);
             if (dnscnt == 1)
                 *dnses = strdup(address);
             else if (dnscnt == 2) {
                 tmp_pointer = realloc(*dnses,
                         strlen(address) + strlen(*dnses) + 2);
                 if (NULL == tmp_pointer) {
-                    ALOGE("%s() Failed to allocate memory for dnses", __func__);
+                    LOGE("%s() Failed to allocate memory for dnses", __func__);
                     goto error;
                 }
                 *dnses = tmp_pointer;
@@ -256,7 +256,7 @@ void requestOrSendPDPContextList(RIL_Token *token)
 
     /* TODO: Check if we should check ip for a specific CID instead */
     if (parse_ip_information(&addresses, &gateways, &dnses, &addr, &gateway) < 0) {
-           ALOGE("%s() Failed to parse network interface data", __func__);
+           LOGE("%s() Failed to parse network interface data", __func__);
            goto error;
     }
 
@@ -343,14 +343,14 @@ void mbm_check_error_cause(void)
     if (e2napCause >= GRPS_SEM_INCORRECT_MSG
             && e2napCause <= GPRS_MSG_NOT_COMP_PROTO_STATE) {
         s_lastPdpFailCause = PDP_FAIL_PROTOCOL_ERRORS;
-        ALOGD("Connection error: %s cause %s", e2napStateToString(e2napState),
+        LOGD("Connection error: %s cause %s", e2napStateToString(e2napState),
                 errorCauseToString(e2napCause));
         return;
     }
 
     if (e2napCause == GPRS_PROTO_ERROR_UNSPECIFIED) {
         s_lastPdpFailCause = PDP_FAIL_PROTOCOL_ERRORS;
-        ALOGD("Connection error: %s cause %s", e2napStateToString(e2napState),
+        LOGD("Connection error: %s cause %s", e2napStateToString(e2napState),
                 errorCauseToString(e2napCause));
         return;
     }
@@ -396,7 +396,7 @@ void mbm_check_error_cause(void)
         s_lastPdpFailCause = PDP_FAIL_NSAPI_IN_USE;
         break;
     default:
-        ALOGD("Unknown connection error: %d", e2napCause);
+        LOGD("Unknown connection error: %d", e2napCause);
         break;
     }
 }
@@ -407,7 +407,7 @@ static int setCharEncoding(const char *enc)
     err = at_send_command("AT+CSCS=\"%s\"", enc);
 
     if (err != AT_NOERROR) {
-        ALOGE("%s() Failed to set AT+CSCS=%s", __func__, enc);
+        LOGE("%s() Failed to set AT+CSCS=%s", __func__, enc);
         return -1;
     }
     return 0;
@@ -422,7 +422,7 @@ static char *getCharEncoding(void)
     err = at_send_command_singleline("AT+CSCS?", "+CSCS:", &p_response);
 
     if (err != AT_NOERROR) {
-        ALOGE("%s() Failed to read AT+CSCS?", __func__);
+        LOGE("%s() Failed to read AT+CSCS?", __func__);
         return NULL;
     }
 
@@ -492,7 +492,7 @@ static int networkAuth(const char *authentication, const char *user,
         atAuth = "00111";
         break;
     default:
-        ALOGE("%s() Unrecognized authentication type %s."
+        LOGE("%s() Unrecognized authentication type %s."
             "Using default value (CHAP, PAP and None)", __func__, authentication);
         atAuth = "00111";
         break;
@@ -576,16 +576,16 @@ void requestSetupDefaultPDP(void *data, size_t datalen, RIL_Token t)
     response.type = (char *) type;
     response.suggestedRetryTime = -1;
 
-    ALOGD("%s() requesting data connection to APN '%s'", __func__, apn);
+    LOGD("%s() requesting data connection to APN '%s'", __func__, apn);
 
     if (ifc_init()) {
-        ALOGE("%s() Failed to set up ifc!", __func__);
+        LOGE("%s() Failed to set up ifc!", __func__);
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         return;
     }
 
     if (ifc_down(ril_iface)) {
-        ALOGE("%s() Failed to bring down %s!", __func__, ril_iface);
+        LOGE("%s() Failed to bring down %s!", __func__, ril_iface);
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         return;
     }
@@ -593,7 +593,7 @@ void requestSetupDefaultPDP(void *data, size_t datalen, RIL_Token t)
     err = at_send_command("AT+CGDCONT=%d,\"IP\",\"%s\"", RIL_CID_IP, apn);
     if (err != AT_NOERROR) {
         cme_err = at_get_cme_error(err);
-        ALOGE("%s() CGDCONT failed: %d, cme: %d", __func__, err, cme_err);
+        LOGE("%s() CGDCONT failed: %d, cme: %d", __func__, err, cme_err);
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         return;
     }
@@ -607,7 +607,7 @@ void requestSetupDefaultPDP(void *data, size_t datalen, RIL_Token t)
     err = at_send_command("AT*ENAP=1,%d", RIL_CID_IP);
     if (err != AT_NOERROR) {
         cme_err = at_get_cme_error(err);
-        ALOGE("requestSetupDefaultPDP: ENAP failed: %d  cme: %d", err, cme_err);
+        LOGE("requestSetupDefaultPDP: ENAP failed: %d  cme: %d", err, cme_err);
         goto error;
     }
 
@@ -615,7 +615,7 @@ void requestSetupDefaultPDP(void *data, size_t datalen, RIL_Token t)
         e2napState = getE2napState();
         if (e2napState == E2NAP_STATE_CONNECTED
                 || e2napState == E2NAP_STATE_DISCONNECTED) {
-            ALOGD("%s() %s", __func__, e2napStateToString(e2napState));
+            LOGD("%s() %s", __func__, e2napStateToString(e2napState));
             break;
         }
         usleep(200 * 1000);
@@ -627,14 +627,14 @@ void requestSetupDefaultPDP(void *data, size_t datalen, RIL_Token t)
         goto error;
 
     if (parse_ip_information(&addresses, &gateways, &dnses, &addr, &gateway) < 0) {
-        ALOGE("%s() Failed to parse network interface data", __func__);
+        LOGE("%s() Failed to parse network interface data", __func__);
         goto error;
     }
 
     response.addresses = addresses;
     response.gateways = gateways;
     response.dnses = dnses;
-    ALOGI("%s() Setting up interface %s,%s,%s",
+    LOGI("%s() Setting up interface %s,%s,%s",
         __func__, response.addresses, response.gateways, response.dnses);
 
     e2napState = getE2napState();
@@ -645,9 +645,9 @@ void requestSetupDefaultPDP(void *data, size_t datalen, RIL_Token t)
     /* Don't use android netutils. We use our own and get the routing correct.
      * Carl Nordbeck */
     if (ifc_configure(ril_iface, addr, gateway))
-        ALOGE("%s() Failed to configure the interface %s", __func__, ril_iface);
+        LOGE("%s() Failed to configure the interface %s", __func__, ril_iface);
 
-    ALOGI("IP Address %s, %s", addresses, e2napStateToString(e2napState));
+    LOGI("IP Address %s, %s", addresses, e2napStateToString(e2napState));
 
     e2napState = getE2napState();
 
@@ -700,7 +700,7 @@ void requestDeactivateDefaultPDP(void *data, size_t datalen, RIL_Token t)
     (void) datalen;
 
     if (e2napState == E2NAP_STATE_CONNECTING)
-        ALOGW("%s() Tear down connection while connection setup in progress", __func__);
+        LOGW("%s() Tear down connection while connection setup in progress", __func__);
 
     if (e2napState != E2NAP_STATE_DISCONNECTED) {
         err = at_send_command("AT*ENAP=0");
@@ -822,7 +822,7 @@ void onConnectionStateChanged(const char *s)
         }
 
         if ((err = pthread_mutex_lock(&s_e2nap_mutex)) != 0)
-            ALOGE("%s() failed to take e2nap mutex: %s", __func__,
+            LOGE("%s() failed to take e2nap mutex: %s", __func__,
                     strerror(err));
 
         if (m_state == E2NAP_STATE_CONNECTING || m_state2 == E2NAP_STATE_CONNECTING) {
@@ -838,22 +838,22 @@ void onConnectionStateChanged(const char *s)
             s_e2napState = E2NAP_STATE_DISCONNECTED;
         }
         if ((err = pthread_mutex_unlock(&s_e2nap_mutex)) != 0)
-            ALOGE("%s() failed to release e2nap mutex: %s", __func__,
+            LOGE("%s() failed to release e2nap mutex: %s", __func__,
                     strerror(err));
     } else {
         if ((err = pthread_mutex_lock(&s_e2nap_mutex)) != 0)
-            ALOGE("%s() failed to take e2nap mutex: %s", __func__,
+            LOGE("%s() failed to take e2nap mutex: %s", __func__,
                     strerror(err));
 
         s_e2napState = m_state;
         s_e2napCause = m_cause;
         if ((err = pthread_mutex_unlock(&s_e2nap_mutex)) != 0)
-            ALOGE("%s() failed to release e2nap mutex: %s", __func__,
+            LOGE("%s() failed to release e2nap mutex: %s", __func__,
                     strerror(err));
 
     }
 
-    ALOGD("%s() %s", __FUNCTION__, e2napStateToString(m_state));
+    LOGD("%s() %s", __FUNCTION__, e2napStateToString(m_state));
 
     if (m_state == E2NAP_STATE_DISCONNECTED) {
         /* Bring down the interface as well. */
@@ -861,7 +861,7 @@ void onConnectionStateChanged(const char *s)
             ifc_down(ril_iface);
             ifc_close();
         } else
-            ALOGE("%s() Failed to set up ifc!", __func__);
+            LOGE("%s() Failed to set up ifc!", __func__);
     }
 
     if (m_state != E2NAP_STATE_CONNECTING)

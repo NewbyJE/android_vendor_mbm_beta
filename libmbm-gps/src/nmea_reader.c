@@ -44,7 +44,7 @@ static NmeaContext global_nmea_context;
 NmeaContext* get_nmea_context(void)
 {
     if (!global_nmea_context.isInitialized)
-         ALOGW("%s, Nmea context not initialized. Possible problems ahead!", __FUNCTION__);
+         LOGW("%s, Nmea context not initialized. Possible problems ahead!", __FUNCTION__);
     return &global_nmea_context;
 }
 

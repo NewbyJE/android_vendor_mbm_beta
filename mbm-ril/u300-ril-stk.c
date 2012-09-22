@@ -187,7 +187,7 @@ int init_stk_service(void)
 
     err = at_send_command("AT*STKC=1,\"000000000000000000\"");
     if (err != AT_NOERROR) {
-        ALOGE("%s() Failed to activate (U)SAT profile", __func__);
+        LOGE("%s() Failed to activate (U)SAT profile", __func__);
         rilresponse = RIL_E_GENERIC_FAILURE;
     }
 
@@ -258,7 +258,7 @@ static char *buildStkMenu(struct stkmenu *cmenu, int n)
     resp = malloc(resplen);
 
     if (!resp) {
-        ALOGD("%s() Memory allocation error", __func__);
+        LOGD("%s() Memory allocation error", __func__);
         return NULL;
     }
 
@@ -336,7 +336,7 @@ void getCachedStkMenu(void)
         n = 1;
         cmenu = malloc((n+1)*sizeof(struct stkmenu));
         if (!cmenu) {
-            ALOGD("%s() Memory allocation error", __func__);
+            LOGD("%s() Memory allocation error", __func__);
             goto cleanup;
         }
 
@@ -357,7 +357,7 @@ void getCachedStkMenu(void)
     } else {
         cmenu = malloc((n+1)*sizeof(struct stkmenu));
         if (!cmenu) {
-            ALOGD("%s() Memory allocation error", __func__);
+            LOGD("%s() Memory allocation error", __func__);
             goto cleanup;
         }
 
@@ -430,7 +430,7 @@ void getCachedStkMenu(void)
     if (!resp)
         goto cleanup;
 
-    ALOGD("%s() STKMENU: %s", __func__, resp);
+    LOGD("%s() STKMENU: %s", __func__, resp);
     RIL_onUnsolicitedResponse(RIL_UNSOL_STK_PROACTIVE_COMMAND, resp, sizeof(char *));
 
 cleanup:
@@ -482,7 +482,7 @@ static void sendRefreshTerminalResponse(void *param)
     struct refreshStatus *refreshState = (struct refreshStatus *)param;
 
     if (!refreshState)
-        ALOGD("%s() called with null parameter", __func__);
+        LOGD("%s() called with null parameter", __func__);
 
     err = at_send_command("AT*STKR=\"8103%02x01%02x820282818301%02x\"",
                    refreshState->cmdNumber, refreshState->cmdQualifier,
@@ -492,7 +492,7 @@ static void sendRefreshTerminalResponse(void *param)
     refreshState = NULL;
 
     if (err != AT_NOERROR)
-        ALOGD("%s() Failed sending at command", __func__);
+        LOGD("%s() Failed sending at command", __func__);
 }
 
 static uint16_t hex2int(const char *data) {
@@ -522,7 +522,7 @@ static void sendSimRefresh(struct tlv *tlvRefreshCmd, char *end)
     refreshState = malloc(sizeof(struct refreshStatus));
 
     if (!refreshState) {
-        ALOGD("%s() Memory allocation error!", __func__);
+        LOGD("%s() Memory allocation error!", __func__);
         return;
     }
     refreshState->cmdNumber = tlv_stream_get(&tlvRefreshCmd->data, tlvRefreshCmd->end);
@@ -555,7 +555,7 @@ static void sendSimRefresh(struct tlv *tlvRefreshCmd, char *end)
         err = mbm_parseTlv(tlvDevId.end, end, &tlvFileList);
 
         if ((err >= 0) && (tlvFileList.tag == 0x12)) {
-            ALOGD("%s() found File List tag", __func__);
+            LOGD("%s() found File List tag", __func__);
             /* one or more files on SIM has been updated
              * but we assume one file for now
              */
@@ -568,7 +568,7 @@ static void sendSimRefresh(struct tlv *tlvRefreshCmd, char *end)
     case SAT_STEERING_OF_ROAMING:
        /* Pass through. Not supported by Android, should never happen */
     default:
-        ALOGD("%s() fallback to SIM initialization", __func__);
+        LOGD("%s() fallback to SIM initialization", __func__);
         /* If parsing of cmdNumber failed, use a number from valid range */
         if (refreshState->cmdNumber < 0)
             refreshState->cmdNumber = 1;
@@ -594,20 +594,20 @@ static int getCmd(char *s, struct tlv *tlvBer, struct tlv *tlvSimple)
     err = mbm_parseTlv(s, end, tlvBer);
 
     if (err < 0) {
-        ALOGD("%s() error parsing BER tlv", __func__);
+        LOGD("%s() error parsing BER tlv", __func__);
         return cmd;
     }
 
     if (tlvBer->tag == 0xD0) {
-        ALOGD("%s() Found Proactive SIM command tag", __func__);
+        LOGD("%s() Found Proactive SIM command tag", __func__);
         err = mbm_parseTlv(tlvBer->data, tlvBer->end, tlvSimple);
         if (err < 0) {
-            ALOGD("%s() error parsing simple tlv", __func__);
+            LOGD("%s() error parsing simple tlv", __func__);
             return cmd;
         }
 
         if (tlvSimple->tag == 0x81) {
-            ALOGD("%s() Found command details tag", __func__);
+            LOGD("%s() Found command details tag", __func__);
             cmd = ((unsigned)char2nib(tlvSimple->data[2]) << 4)
                 | ((unsigned)char2nib(tlvSimple->data[3]) << 0);
         }
@@ -622,39 +622,39 @@ static int getStkResponse(char *s, struct tlv *tlvBer, struct tlv *tlvSimple)
 
     switch (cmd){
         case 0x13:
-            ALOGD("%s() Send short message", __func__);
+            LOGD("%s() Send short message", __func__);
             return RIL_UNSOL_STK_EVENT_NOTIFY;
             break;
         case 0x11:
-            ALOGD("%s() Send SS", __func__);
+            LOGD("%s() Send SS", __func__);
             return RIL_UNSOL_STK_EVENT_NOTIFY;
             break;
         case 0x12:
-            ALOGD("%s() Send USSD", __func__);
+            LOGD("%s() Send USSD", __func__);
             return RIL_UNSOL_STK_EVENT_NOTIFY;
             break;
         case 0x40:
-            ALOGD("%s() Open channel", __func__);
+            LOGD("%s() Open channel", __func__);
             return RIL_UNSOL_STK_EVENT_NOTIFY;
             break;
         case 0x41:
-            ALOGD("%s() Close channel", __func__);
+            LOGD("%s() Close channel", __func__);
             return RIL_UNSOL_STK_EVENT_NOTIFY;
             break;
         case 0x42:
-            ALOGD("%s() Receive data", __func__);
+            LOGD("%s() Receive data", __func__);
             return RIL_UNSOL_STK_EVENT_NOTIFY;
             break;
         case 0x43:
-            ALOGD("%s() Send data", __func__);
+            LOGD("%s() Send data", __func__);
             return RIL_UNSOL_STK_EVENT_NOTIFY;
             break;
         case 0x44:
-            ALOGD("%s() Get channel status", __func__);
+            LOGD("%s() Get channel status", __func__);
             return RIL_UNSOL_STK_EVENT_NOTIFY;
             break;
         default:
-            ALOGD("%s() Proactive command", __func__);
+            LOGD("%s() Proactive command", __func__);
             break;
     }
 
@@ -699,7 +699,7 @@ void onStkProactiveCommand(const char *s)
     return;
 
 error:
-    ALOGE("%s() failed to parse proactive command!", __func__);
+    LOGE("%s() failed to parse proactive command!", __func__);
     free(line);
 }
 
@@ -738,6 +738,6 @@ void onStkEventNotify(const char *s)
     return;
 
 error:
-    ALOGW("%s() Failed to parse STK Notify Event", __func__);
+    LOGW("%s() Failed to parse STK Notify Event", __func__);
     free(line);
 }

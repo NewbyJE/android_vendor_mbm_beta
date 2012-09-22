@@ -159,7 +159,7 @@ void nmea_close (void)
     GpsCtrlContext *context = get_gpsctrl_context();
 
     if(NULL == context) {
-        ALOGW("%s, context invalid", __FUNCTION__);
+        LOGW("%s, context invalid", __FUNCTION__);
         return;
     }
 

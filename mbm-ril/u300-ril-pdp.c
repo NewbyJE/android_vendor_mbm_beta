@@ -728,12 +728,10 @@ void requestDeactivateDefaultPDP(void *data, size_t datalen, RIL_Token t)
     }
 
     RIL_onRequestComplete(t, RIL_E_SUCCESS, NULL, 0);
-    at_response_free(p_response);
     return;
 
 error:
     RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
-    at_response_free(p_response);
 }
 
 /**

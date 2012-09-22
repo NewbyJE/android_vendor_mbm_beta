@@ -42,9 +42,11 @@ Requires several corrections to Android ICS to properly recognize HSPA+ (HSPAP):
 
 Platform Implementation for HP TouchPad 4G
 ================================================================
-The MBM HAL files in this repository should be added in vendor/mbm. 
+The files in this repository should be added in vendor/mbm. 
 
-Numerous changes are required in device/hp/tenderloin.  These are in a separate repos which can be added to you local_manifest.xml, as follows:
+General platform specific changes that may be required are available in the 'patches-internal' directory.  
+
+The actual changes implemented for the HP TouchPad 4G have been incorporated in https://github.com/NewbyJE/android_device_hp_tenderloin.git.  These can be added to you local_manifest.xml, as follows:
 
   <?xml version="1.0" encoding="UTF-8"?>
   <manifest>

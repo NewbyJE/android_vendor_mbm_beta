@@ -1,0 +1,69 @@
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index 643be3d..49abf27 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -328,6 +328,30 @@ on boot
+     setprop net.tcp.buffersize.gprs    4092,8760,11680,4096,8760,11680
+     setprop net.tcp.buffersize.evdo    4094,87380,262144,4096,16384,262144
+ 
++# Enable USB auto suspend for MBM devices
++    write /sys/bus/usb/devices/1-1/power/autosuspend 2
++    write /sys/bus/usb/devices/1-1/power/control auto
++    write /sys/bus/usb/devices/1-1/power/wakeup enabled
++
++# Set Loglevel for MBM GPS
++    setprop mbm.gps.config.loglevel INFO
++
++# Set the device for controlling the gps
++    setprop mbm.gps.config.gps_ctrl /dev/cdc-wdm0
++
++# Set the device for nmea data
++    setprop mbm.gps.config.gps_nmea /dev/ttyACM2
++
++# Set the desired mode (PGPS,SUPL or STANDALONE
++    setprop mbm.gps.config.gps_pref_mode PGPS
++
++# The following settings are only used for SUPL
++# Enable network initiated requests
++    setprop mbm.gps.config.supl.enable_ni yes
++
++# Allow connecting to supl servers without certificates
++    setprop mbm.gps.config.supl.uncert yes
++
+ # allow system to modify ksm control files
+     chown root system /sys/kernel/mm/ksm/pages_to_scan
+     chmod 0664 /sys/kernel/mm/ksm/pages_to_scan
+@@ -422,12 +446,12 @@ service netd /system/bin/netd
+ service debuggerd /system/bin/debuggerd
+     class main
+ 
+-service ril-daemon /system/bin/rild
+-    class main
+-    socket rild stream 660 root radio
+-    socket rild-debug stream 660 radio system
+-    user root
+-    group radio cache inet misc audio sdcard_r sdcard_rw qcom_oncrpc qcom_diag log
++service ril-daemon /system/bin/rild -l /system/lib/libmbm-ril.so -- -d /dev/ttyACM1 -i rmnet0
++     class main
++     socket rild stream 660 root radio
++     socket rild-debug stream 660 radio system
++     user root
++     group radio cache inet misc audio sdcard_rw log
+ 
+ service surfaceflinger /system/bin/surfaceflinger
+     class main
+diff --git a/rootdir/ueventd.rc b/rootdir/ueventd.rc
+index e90c31a..cd9c6d0 100644
+--- a/rootdir/ueventd.rc
++++ b/rootdir/ueventd.rc
+@@ -99,3 +99,10 @@
+ /sys/devices/system/cpu/cpufreq interactive/hispeed_freq    0664    system  system
+ /sys/devices/system/cpu/cpufreq interactive/go_hispeed_load 0664    system  system
+ /sys/devices/system/cpu/cpufreq interactive/above_hispeed_delay 0664    system  system
++
++# MBM devices
++/dev/ttyACM0                 0666   radio      radio
++/dev/ttyACM1                 0666   radio      radio
++/dev/ttyACM2                 0640   system     system
++/dev/cdc-wdm0                0666   system     system
++/dev/cdc-wdm1                0666   system     system

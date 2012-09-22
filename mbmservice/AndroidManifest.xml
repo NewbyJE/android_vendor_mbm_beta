@@ -1,0 +1,41 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:installLocation="internalOnly"
+    package="com.mbm.mbmservice"
+    android:versionCode="4"
+    android:versionName="4.0.0.0-beta"
+    android:sharedUserId="android.uid.phone" >
+
+    <uses-sdk android:minSdkVersion="9" />
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application android:process="com.android.phone">
+        <receiver android:name="com.mbm.mbmservice.MbmServiceReceiver" >
+            <intent-filter >
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+                <action android:name="android.intent.action.ANY_DATA_STATE" />
+                <action android:name="android.intent.action.AIRPLANE_MODE" />
+                <action android:name="android.intent.action.SERVICE_STATE" />
+                <action android:name="android.intent.action.PHONE_STATE" />
+                <action android:name="android.location.PROVIDERS_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
+        <service android:name="com.mbm.mbmservice.MbmService" >
+            <intent-filter >
+                <action android:name="com.mbm.mbmservice.MbmService" />
+            </intent-filter>
+        </service>
+    </application>
+
+</manifest>

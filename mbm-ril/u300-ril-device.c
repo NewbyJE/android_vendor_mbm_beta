@@ -379,9 +379,10 @@ static const char *radioStateToString(RIL_RadioState radioState)
     case RADIO_STATE_NV_READY:
         state = "RADIO_STATE_NV_READY";
         break;
-    case RADIO_STATE_ON:
-        state = "RADIO_STATE_ON";
-        break;
+/*    case RADIO_STATE_ON:
+ *        state = "RADIO_STATE_ON";
+ *        break;
+ */
     default:
         state = "RADIO_STATE_<> Unknown!";
         break;

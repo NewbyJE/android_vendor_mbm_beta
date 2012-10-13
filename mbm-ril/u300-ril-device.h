@@ -14,6 +14,8 @@ int isRadioOn(void);
 void setRadioState(RIL_RadioState newState);
 RIL_RadioState getRadioState(void);
 void onSIMReady(void *p);
+void sendTime(void *p);
+char *getTime(void);
 
 void clearDeviceInfo(void);
 

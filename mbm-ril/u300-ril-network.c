@@ -33,6 +33,7 @@
 #include "u300-ril-network.h"
 #include "u300-ril-sim.h"
 #include "u300-ril-pdp.h"
+#include "u300-ril-device.h"
 
 #define LOG_TAG "RIL"
 #include <utils/Log.h>
@@ -44,6 +45,13 @@
 static const struct timespec TIMEVAL_OPERATOR_SELECT_POLL = { 1, 0 };
 
 static char last_nitz_time[MAX_NITZ_LENGTH];
+
+static int s_creg_stat = 4, s_creg_lac = -1, s_creg_cid = -1;
+static int s_cgreg_stat = 4, s_cgreg_lac = -1, s_cgreg_cid = -1, s_cgreg_act = -1;
+
+static int s_gsm_rinfo = 0, s_umts_rinfo = 0;
+static int s_reg_change = 0;
+static int s_cops_mode = -1;
 
 static void pollOperatorSelected(void *params);
 
@@ -209,34 +217,6 @@ error:
     return;
 }
 
-void sendTime(void *p)
-{
-    time_t t;
-    struct tm tm;
-    char str[20];
-    char tz[6];
-    int num[4];
-    int tzi;
-    int i;
-    (void) p;
-
-    tzset();
-    t = time(NULL);
-
-    if (!(localtime_r(&t, &tm)))
-        return;
-    if (!(strftime(tz, 12, "%z", &tm)))
-        return;
-
-    for (i = 0; i < 4; i++)
-        num[i] = tz[i+1] - '0';
-
-    /* convert timezone hours to timezone quarters of hours */
-    tzi = (num[0] * 10 + num[1]) * 4 + (num[2] * 10 + num[3]) / 15;
-    strftime(str, 20, "%y/%m/%d,%T", &tm);
-    at_send_command("at+cclk=\"%s%c%02d\"", str, tz[0], tzi);
-}
-
 /**
  * Convert UCS2 hex coded string to UTF-8 coded string.
  *
@@ -399,14 +379,20 @@ void onNetworkTimeReceived(const char *s)
         if (strncmp(response, last_nitz_time, strlen(response)) != 0) {
             RIL_onUnsolicitedResponse(RIL_UNSOL_NITZ_TIME_RECEIVED,
                                       response, sizeof(char *));
+            /* If we're in screen state off, we have disabled CREG, but the ETZV
+               will catch those few cases. So we send network state changed as
+               well on NITZ. */
+            if (!getScreenState())
+                RIL_onUnsolicitedResponse(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED,
+                                          NULL, 0);
             strncpy(last_nitz_time, response, strlen(response));
+            enqueueRILEvent(RIL_EVENT_QUEUE_NORMAL, sendTime,
+                            NULL, NULL);
         } else
             ALOGD("%s() Discarding NITZ since it hasn't changed since last update",
              __func__);
 
         free(response);
-        enqueueRILEvent(RIL_EVENT_QUEUE_NORMAL, sendTime,
-                        NULL, NULL);
     }
 
     free(ucs);
@@ -508,59 +494,17 @@ error:
 void requestNeighboringCellIDs(void *data, size_t datalen, RIL_Token t)
 {
     (void) data; (void) datalen;
-    int network = -1;
-    int dummy = 0;
-    char *dummyStr = NULL;
-    int err = 0;
-    ATResponse *cops_resp = NULL;
-    char *line = NULL;
 
-    /* Determine network radio access technology (AcT) */
-    err = at_send_command_singleline("AT+COPS?", "+COPS:", &cops_resp);
-    if (err != AT_NOERROR)
-        goto error;
-
-    line = cops_resp->p_intermediates->line;
-
-    err = at_tok_start(&line);
-    if (err < 0) goto error;
-    /* Mode */
-    err = at_tok_nextint(&line, &dummy);
-    if (err < 0) goto error;
-    /* Check to see if not registered */
-    if (!at_tok_hasmore(&line)) {
+    if ((s_cs_status != E2REG_REGISTERED) && (s_ps_status != E2REG_REGISTERED)) {
         No_NCIs(t);
-        goto finally;
+        return;
     }
-    /* Format */
-    err = at_tok_nextint(&line, &dummy);
-    if (err < 0) goto error;
-    /* Operator */
-    err = at_tok_nextstr(&line, &dummyStr);
-    if (err < 0) goto error;
-    /* Network */
-    err = at_tok_nextint(&line, &network);
-    if (err < 0) goto error;
-
-    switch (network) {
-    case 0:                    /* GSM (GPRS,2G)*/
+    if (s_gsm_rinfo)        /* GSM (GPRS,2G) */
         Get_GSM_NCIs(t);
-        break;
-    case 2:                    /* UTRAN (WCDMA/UMTS, 3G)*/
+    else if (s_umts_rinfo)  /* UTRAN (WCDMA/UMTS, 3G) */
         Get_WCDMA_NCIs(t);
-        break;
-    default:
+    else
         No_NCIs(t);
-        break;
-    }
-
-finally:
-    at_response_free(cops_resp);
-    return;
-
-error:
-    RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
-    goto finally;
 }
 
 /**
@@ -576,8 +520,7 @@ void Get_GSM_NCIs(RIL_Token t)
     RIL_NeighboringCell *ptr_cells[MAX_NUM_NEIGHBOR_CELLS];
 
     err = at_send_command_multiline("AT*EGNCI", "*EGNCI:", &gnci_resp);
-    if (err != AT_NOERROR ||
-        gnci_resp->success == 0 || gnci_resp->p_intermediates == NULL) {
+    if (err != AT_NOERROR) {
         No_NCIs(t);
         goto finally;
     }
@@ -656,8 +599,7 @@ void Get_WCDMA_NCIs(RIL_Token t)
     RIL_NeighboringCell *ptr_cells[MAX_NUM_NEIGHBOR_CELLS];
 
     err = at_send_command_multiline("AT*EWNCI", "*EWNCI:", &wnci_resp);
-    if (err != AT_NOERROR ||
-        wnci_resp->success == 0 || wnci_resp->p_intermediates == NULL) {
+    if (err != AT_NOERROR) {
         No_NCIs(t);
         goto finally;
     }
@@ -761,15 +703,209 @@ void onSignalStrengthChanged(const char *s)
     enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSignalStrength, NULL, NULL);
 }
 
+void onRegistrationStatusChanged(const char *s)
+{
+    char *line = NULL, *ptr = NULL;
+    int *stat_ptr, *lac_ptr, *cid_ptr, *act_ptr = NULL;
+    int commas = 0, update = 0;
+    int skip, tmp, err;
+    int creg_stat = 4, creg_lac = -1, creg_cid = -1, creg_act = -1;
+    int cgreg_stat = 4, cgreg_lac = -1, cgreg_cid = -1, cgreg_act = -1;
+
+    ptr = line = strdup(s);
+    if (line == NULL) {
+        ALOGE("%s() Failed to allocate memory", __func__);
+        return;
+    }
+
+    at_tok_start(&line);
+
+    if (strStartsWith(s, "+CREG:")) {
+        stat_ptr = &creg_stat;
+        lac_ptr = &creg_lac;
+        cid_ptr = &creg_cid;
+        act_ptr = &creg_act;
+    } else {
+        stat_ptr = &cgreg_stat;
+        lac_ptr = &cgreg_lac;
+        cid_ptr = &cgreg_cid;
+        act_ptr = &cgreg_act;
+    }
+
+    /* Count number of commas */
+    err = at_tok_charcounter(line, ',', &commas);
+    if (err < 0) {
+        ALOGE("%s() at_tok_charcounter failed", __func__);
+        goto error;
+    }
+
+    switch (commas) {
+    case 0:                    /* +xxREG: <stat> */
+        err = at_tok_nextint(&line, stat_ptr);
+        if (err < 0) goto error;
+        break;
+
+    case 1:                    /* +xxREG: <n>, <stat> */
+        err = at_tok_nextint(&line, &skip);
+        if (err < 0) goto error;
+        err = at_tok_nextint(&line, stat_ptr);
+        if (err < 0) goto error;
+        break;
+
+    case 2:                    /* +xxREG: <stat>, <lac>, <cid> */
+        err = at_tok_nextint(&line, stat_ptr);
+        if (err < 0) goto error;
+        err = at_tok_nexthexint(&line, lac_ptr);
+        if (err < 0) goto error;
+        err = at_tok_nexthexint(&line, cid_ptr);
+        if (err < 0) goto error;
+        break;
+
+    case 3:                    /* +xxREG: <n>, <stat>, <lac>, <cid> */
+                               /* +xxREG: <stat>, <lac>, <cid>, <AcT> */
+        err = at_tok_nextint(&line, &tmp);
+        if (err < 0) goto error;
+
+        /* We need to check if the second parameter is <lac> */
+        if (*(line) == '"') {
+            *stat_ptr = tmp; /* <stat> */
+            err = at_tok_nexthexint(&line, lac_ptr); /* <lac> */
+            if (err < 0) goto error;
+            err = at_tok_nexthexint(&line, cid_ptr); /* <cid> */
+            if (err < 0) goto error;
+            err = at_tok_nextint(&line, act_ptr); /* <AcT> */
+        } else {
+            err = at_tok_nextint(&line, stat_ptr); /* <stat> */
+           if (err < 0) goto error;
+            err = at_tok_nexthexint(&line, lac_ptr); /* <lac> */
+            if (err < 0) goto error;
+            err = at_tok_nexthexint(&line, cid_ptr); /* <cid> */
+            if (err < 0) goto error;
+        }
+        break;
+
+    case 4:                    /* +xxREG: <n>, <stat>, <lac>, <cid>, <AcT> */
+        err = at_tok_nextint(&line, &skip); /* <n> */
+        if (err < 0) goto error;
+        err = at_tok_nextint(&line, stat_ptr); /* <stat> */
+        if (err < 0) goto error;
+        err = at_tok_nexthexint(&line, lac_ptr); /* <lac> */
+        if (err < 0) goto error;
+        err = at_tok_nexthexint(&line, cid_ptr); /* <cid> */
+        if (err < 0) goto error;
+        err = at_tok_nextint(&line, act_ptr); /* <AcT> */
+        break;
+
+    default:
+        ALOGE("%s() Invalid input", __func__);
+        goto error;
+    }
+
+
+    /* Reduce the amount of unsolicited sent to the framework
+       LAC and CID will be the same in both domains */
+    if (strStartsWith(s, "+CREG:")) {
+        if (s_creg_stat != creg_stat) {
+            update = 1;
+            s_creg_stat = creg_stat;
+        }
+        if (s_creg_lac != creg_lac) {
+            if (s_cgreg_lac != creg_lac)
+                update = 1;
+            s_creg_lac = creg_lac;
+        }
+        if (s_creg_cid != creg_cid) {
+            if (s_cgreg_cid != creg_cid)
+                update = 1;
+            s_creg_cid = creg_cid;
+        }
+    } else {
+        if (s_cgreg_stat != cgreg_stat) {
+            update = 1;
+            s_cgreg_stat = cgreg_stat;
+        }
+        if (s_cgreg_lac != cgreg_lac) {
+            if (s_creg_lac != cgreg_lac)
+                update = 1;
+            s_cgreg_lac = cgreg_lac;
+        }
+        if (s_cgreg_cid != cgreg_cid) {
+            if (s_creg_cid != cgreg_cid)
+                update = 1;
+            s_cgreg_cid = cgreg_cid;
+        }
+        if (s_cgreg_act != cgreg_act) {
+            update = 1;
+            s_cgreg_act = cgreg_act;
+        }
+    }
+
+    if (update) {
+        s_reg_change = 1;
+        RIL_onUnsolicitedResponse(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED,
+                                  NULL, 0);
+    } else
+        ALOGW("%s() Skipping unsolicited response since no change in state", __func__);
+
+finally:
+    free(ptr);
+    return;
+
+error:
+    ALOGE("%s() Unable to parse (%s)", __func__, s);
+    goto finally;
+}
+
+void onNetworkCapabilityChanged(const char *s)
+{
+    int err;
+    int skip;
+    char *line = NULL, *tok = NULL;
+    static int old_gsm_rinfo = -1, old_umts_rinfo = -1;
+
+    s_gsm_rinfo = s_umts_rinfo = 0;
+
+    tok = line = strdup(s);
+    if (tok == NULL)
+        goto error;
+
+    at_tok_start(&tok);
+
+    err = at_tok_nextint(&tok, &skip);
+    if (err < 0)
+        goto error;
+
+    err = at_tok_nextint(&tok, &s_gsm_rinfo);
+    if (err < 0)
+        goto error;
+
+    err = at_tok_nextint(&tok, &s_umts_rinfo);
+    if (err < 0)
+        goto error;
+
+    if ((old_gsm_rinfo != s_gsm_rinfo) || (old_umts_rinfo != s_umts_rinfo)) {
+        old_gsm_rinfo = s_gsm_rinfo;
+        old_umts_rinfo = s_umts_rinfo;
+        /* No need to update when screen is off */
+        if (getScreenState())
+            RIL_onUnsolicitedResponse(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED,
+                                      NULL, 0);
+    } else
+        ALOGW("%s() Skipping unsolicited response since no change in state", __func__);
+
+error:
+    free(line);
+}
+
 void onNetworkStatusChanged(const char *s)
 {
     int err;
     int skip;
     int resp;
     char *line = NULL, *tok = NULL;
+    static int old_resp = -1;
 
     s_cs_status = s_ps_status = E2REG_UNKNOWN;
-
     tok = line = strdup(s);
     if (tok == NULL)
         goto error;
@@ -797,6 +933,13 @@ void onNetworkStatusChanged(const char *s)
         case E2REG_LA_NOT_ALLOWED:
         case E2REG_ROAMING_NOT_ALLOWED:
         case E2REG_NO_SUITABLE_CELLS:
+        case E2REG_INVALID_SIM_AUTH:
+        case E2REG_INVALID_SIM_CONTENT:
+        case E2REG_INVALID_SIM_LOCKED:
+        case E2REG_INVALID_SIM_IMSI:
+        case E2REG_INVALID_SIM_ILLEGAL_MS:
+        case E2REG_INVALID_SIM_ILLEGAL_ME:
+        case E2REG_INVALID_SIM_NO_GPRS:
             resp |= RIL_RESTRICTED_STATE_CS_ALL;
             break;
         default:
@@ -811,18 +954,35 @@ void onNetworkStatusChanged(const char *s)
         case E2REG_ROAMING_NOT_ALLOWED:
         case E2REG_PS_ONLY_GPRS_NOT_ALLOWED:
         case E2REG_NO_SUITABLE_CELLS:
+        case E2REG_INVALID_SIM_AUTH:
+        case E2REG_INVALID_SIM_CONTENT:
+        case E2REG_INVALID_SIM_LOCKED:
+        case E2REG_INVALID_SIM_IMSI:
+        case E2REG_INVALID_SIM_ILLEGAL_MS:
+        case E2REG_INVALID_SIM_ILLEGAL_ME:
+        case E2REG_PS_ONLY_INVALID_SIM_GPRS:
+        case E2REG_INVALID_SIM_NO_GPRS:
             resp |= RIL_RESTRICTED_STATE_PS_ALL;
             break;
         default:
             break;
     }
 
-    RIL_onUnsolicitedResponse(RIL_UNSOL_RESTRICTED_STATE_CHANGED,
-                              &resp, sizeof(int *));
+    if (old_resp != resp) {
+        RIL_onUnsolicitedResponse(RIL_UNSOL_RESTRICTED_STATE_CHANGED,
+                                  &resp, sizeof(int *));
+        old_resp = resp;
+    } else
+        ALOGW("%s() Skipping unsolicited response since no change in state", __func__);
 
     /* If registered, poll signal strength for faster update of signal bar */
-    if ((s_cs_status == E2REG_REGISTERED) || (s_ps_status == E2REG_REGISTERED))
+    if ((s_cs_status == E2REG_REGISTERED) || (s_ps_status == E2REG_REGISTERED)) {
         enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSignalStrength, (void *)-1, NULL);
+        /* Make sure registration state is updated when screen is off */
+        if (!getScreenState())
+            RIL_onUnsolicitedResponse(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED,
+                                      NULL, 0);
+    }
 
 error:
     free(line);
@@ -864,6 +1024,8 @@ void requestSetNetworkSelectionAutomatic(void *data, size_t datalen,
     err = at_tok_nextint(&line, &mode);
     if (err < 0)
         goto error;
+
+    s_cops_mode = mode;
 
     /* If we're unregistered, we may just get
        a "+COPS: 0" response. */
@@ -940,6 +1102,8 @@ check_reg:
     if (err < 0)
         goto error;
 
+    s_creg_stat = mode;
+
     /* If scanning has stopped, then perform a new scan */
     if (mode == 0) {
         ALOGD("%s() Already in automatic mode, but not currently scanning on CS,"
@@ -970,6 +1134,8 @@ check_reg:
     if (err < 0)
         goto error;
 
+    s_cgreg_stat = mode;
+
     /* If scanning has stopped, then perform a new scan */
     if (mode == 0) {
         ALOGD("%s() Already in automatic mode, but not currently scanning on PS,"
@@ -991,6 +1157,8 @@ do_auto:
     err = at_send_command("AT+COPS=0");
     if (err != AT_NOERROR)
         goto error;
+
+    s_cops_mode = 0;
 
 finish_scan:
 
@@ -1045,6 +1213,8 @@ void requestSetNetworkSelectionManual(void *data, size_t datalen,
     if (err != AT_NOERROR)
         goto error;
 
+    s_cops_mode = 1;
+
     RIL_onRequestComplete(t, RIL_E_SUCCESS, NULL, 0);
     return;
 
@@ -1088,8 +1258,15 @@ void requestQueryAvailableNetworks(void *data, size_t datalen, RIL_Token t)
     int n = 0;
     int i = 0;
 
+    /* Increase the AT command timeout for this operation */
+    at_set_timeout_msec(1000 * 60 * 6);
+
     /* Get available operators */
     err = at_send_command_multiline("AT+COPS=?", "+COPS:", &atresponse);
+
+    /* Restore default AT command timeout */
+    at_set_timeout_msec(1000 * 30);
+
     if (err != AT_NOERROR)
         goto error;
 
@@ -1355,10 +1532,16 @@ void requestQueryNetworkSelectionMode(void *data, size_t datalen,
     (void) data; (void) datalen;
     int err;
     ATResponse *atresponse = NULL;
-    int response = 0;
+    int response = s_cops_mode;
     char *line;
 
+    if (s_cops_mode != -1)
+        goto no_sim;
+
     err = at_send_command_singleline("AT+COPS?", "+COPS:", &atresponse);
+
+    if (at_get_cme_error(err) == CME_SIM_NOT_INSERTED)
+        goto no_sim;
 
     if (err != AT_NOERROR)
         goto error;
@@ -1383,6 +1566,7 @@ void requestQueryNetworkSelectionMode(void *data, size_t datalen,
     if (response == 4)
         response = 1;
 
+no_sim:
     RIL_onRequestComplete(t, RIL_E_SUCCESS, &response, sizeof(int));
 
 finally:
@@ -1429,6 +1613,7 @@ CsReg_Deny_DetailReason convertCsRegistrationDeniedReason(int detailedReason)
         reason = NETWORK_FAILURE;
         break;
     case E2REG_PLMN_NOT_ALLOWED:
+    case E2REG_NO_ALLOWABLE_PLMN:
         reason = PLMN_NOT_ALLOWED;
         break;
     case E2REG_LA_NOT_ALLOWED:
@@ -1441,6 +1626,9 @@ CsReg_Deny_DetailReason convertCsRegistrationDeniedReason(int detailedReason)
         reason = NO_SUITABLE_CELL_IN_LOCATION_AREA;
         break;
     case E2REG_INVALID_SIM_AUTH:
+    case E2REG_INVALID_SIM_CONTENT:
+    case E2REG_INVALID_SIM_LOCKED:
+    case E2REG_INVALID_SIM_NO_GPRS:
         reason = AUTHENTICATION_FAILURE;
         break;
     case E2REG_INVALID_SIM_IMSI:
@@ -1474,6 +1662,11 @@ PsReg_Deny_DetailReason convertPsRegistrationDeniedReason(int detailedReason)
         reason = IMPLICITLY_DETACHED;
         break;
     case E2REG_PS_ONLY_GPRS_NOT_ALLOWED:
+    case E2REG_NO_SUITABLE_CELLS:
+    case E2REG_NO_ALLOWABLE_PLMN:
+    case E2REG_PLMN_NOT_ALLOWED:
+    case E2REG_LA_NOT_ALLOWED:
+    case E2REG_ROAMING_NOT_ALLOWED:
         reason = GPRS_NOT_ALLOWED_PLMN;
         break;
     case E2REG_INVALID_SIM_ILLEGAL_MS:
@@ -1483,6 +1676,11 @@ PsReg_Deny_DetailReason convertPsRegistrationDeniedReason(int detailedReason)
         reason = GPRS_NOT_ALLOWED;
         break;
     case E2REG_INVALID_SIM_NO_GPRS:
+    case E2REG_INVALID_SIM_AUTH:
+    case E2REG_INVALID_SIM_CONTENT:
+    case E2REG_INVALID_SIM_LOCKED:
+    case E2REG_INVALID_SIM_IMSI:
+    case E2REG_INVALID_SIM_ILLEGAL_ME:
         reason = GPRS_NON_GPRS_NOT_ALLOWED;
         break;
     default:
@@ -1493,42 +1691,21 @@ PsReg_Deny_DetailReason convertPsRegistrationDeniedReason(int detailedReason)
     return reason;
 }
 
-char *getNetworkType(int def){
+char *getNetworkType(int def)
+{
     int network = def;
-    int err;
-    int gsm_rinfo, umts_rinfo, skip;
-    int ul, dl;
+    int err, skip;
+    static int ul, dl;
     int networkType;
     char *line;
     ATResponse *p_response;
+    static int old_umts_rinfo = -1;
 
-    err = at_send_command_singleline("AT*ERINFO?", "*ERINFO:",
-                                     &p_response);
+    if (s_umts_rinfo > ERINFO_UMTS_NO_UMTS_HSDPA &&
+        getE2napState() == E2NAP_STATE_CONNECTED &&
+        old_umts_rinfo != s_umts_rinfo) {
 
-    if (err != AT_NOERROR)
-        return NULL;
-
-    line = p_response->p_intermediates->line;
-    err = at_tok_start(&line);
-    if (err < 0)
-            goto finally;
-
-    err = at_tok_nextint(&line, &skip);
-    if (err < 0)
-            goto finally;
-
-    err = at_tok_nextint(&line, &gsm_rinfo);
-    if (err < 0)
-            goto finally;
-
-    err = at_tok_nextint(&line, &umts_rinfo);
-    if (err < 0)
-            goto finally;
-
-    at_response_free(p_response);
-
-    if (umts_rinfo > ERINFO_UMTS_NO_UMTS_HSDPA && getE2napState() == E2NAP_STATE_CONNECTED) {
-
+        old_umts_rinfo = s_umts_rinfo;
         err = at_send_command_singleline("AT+CGEQNEG=%d", "+CGEQNEG:", &p_response, RIL_CID_IP);
 
         if (err != AT_NOERROR)
@@ -1558,19 +1735,22 @@ char *getNetworkType(int def){
 
             at_response_free(p_response);
             ALOGI("Max speed %i/%i, UL/DL", ul, dl);
-
-            network = CGREG_ACT_UTRAN;
-            if (dl > 384)
-                network = CGREG_ACT_UTRAN_HSDPA;
-            if (ul > 384)
-                network = CGREG_ACT_UTRAN_HSUPA_HSDPA;
-            if (dl > 14400)
-                network = CGREG_ACT_UTRAN_HSPAP;
         }
     }
-    else if (gsm_rinfo) {
-        ALOGD("%s() Using 2G info: %d", __func__, gsm_rinfo);
-        if (gsm_rinfo == 1)
+    if (s_umts_rinfo > ERINFO_UMTS_NO_UMTS_HSDPA) {
+        network = CGREG_ACT_UTRAN;
+        if (dl > 384)
+            network = CGREG_ACT_UTRAN_HSDPA;
+        if (ul > 384) {
+            if (s_umts_rinfo == ERINFO_UMTS_HSPA_EVOL)
+                network = CGREG_ACT_UTRAN_HSPAP;
+            else
+                network = CGREG_ACT_UTRAN_HSUPA_HSDPA;
+        }
+    }
+    else if (s_gsm_rinfo) {
+        ALOGD("%s() Using 2G info: %d", __func__, s_gsm_rinfo);
+        if (s_gsm_rinfo == 1)
             network = CGREG_ACT_GSM;
         else
             network = CGREG_ACT_GSM_EGPRS;
@@ -1629,17 +1809,34 @@ void requestGprsRegistrationState(int request, void *data,
     int skip, tmp;
     int ps_status = 0;
     int count = 3;
-
-    getScreenStateLock();
-    if (!getScreenState())
-        (void)at_send_command("AT+CGREG=2"); /* Response not vital */
+    int i;
 
     memset(responseStr, 0, sizeof(responseStr));
     memset(response, 0, sizeof(response));
     response[1] = -1;
     response[2] = -1;
 
+    /* We only allow polling if screenstate is off, in such case
+       CREG and CGREG unsolicited are disabled */
+    getScreenStateLock();
+    if (!getScreenState())
+        (void)at_send_command("AT+CGREG=2"); /* Response not vital */
+    else {
+        response[0] = s_cgreg_stat;
+        response[1] = s_cgreg_lac;
+        response[2] = s_cgreg_cid;
+        response[3] = s_cgreg_act;
+        if (response[0] == CGREG_STAT_REG_DENIED)
+            response[4] = convertPsRegistrationDeniedReason(s_ps_status);
+        goto cached;
+    }
+
+
     err = at_send_command_singleline("AT+CGREG?", "+CGREG: ", &cgreg_resp);
+
+    if (at_get_cme_error(err) == CME_SIM_NOT_INSERTED)
+        goto no_sim;
+
     if (err != AT_NOERROR)
         goto error;
 
@@ -1760,15 +1957,19 @@ void requestGprsRegistrationState(int request, void *data,
             goto error;
 
         response[4] = convertPsRegistrationDeniedReason(ps_status);
-        err = asprintf(&responseStr[4], "%d", response[4]);
-        if (err < 0)
-            goto error;
     }
 
+    s_cgreg_stat = response[0];
+    s_cgreg_lac = response[1];
+    s_cgreg_cid = response[2];
+    s_cgreg_act = response[3];
+
+cached:
     if (response[0] == CGREG_STAT_REG_HOME_NET ||
         response[0] == CGREG_STAT_ROAMING)
         responseStr[3] = getNetworkType(response[3]);
 
+no_sim:
     /* Converting to stringlist for Android */
     asprintf(&responseStr[0], "%d", response[0]); /* state */
 
@@ -1782,7 +1983,12 @@ void requestGprsRegistrationState(int request, void *data,
     else
         responseStr[2] = NULL;
 
-    responseStr[5] = "1";
+    if (response[4] >= 0)
+        err = asprintf(&responseStr[4], "%d", response[4]);
+    else
+        responseStr[4] = NULL;
+
+    asprintf(&responseStr[5], "%d", 1);
 
     RIL_onRequestComplete(t, RIL_E_SUCCESS, responseStr, resp_size * sizeof(char *));
 
@@ -1792,14 +1998,8 @@ finally:
 
     releaseScreenStateLock(); /* Important! */
 
-    if (responseStr[0])
-        free(responseStr[0]);
-    if (responseStr[1])
-        free(responseStr[1]);
-    if (responseStr[2])
-        free(responseStr[2]);
-    if (responseStr[3])
-        free(responseStr[3]);
+    for (i = 0; i < resp_size; i++)
+        free(responseStr[i]);
 
     at_response_free(cgreg_resp);
     at_response_free(e2reg_resp);
@@ -1830,20 +2030,30 @@ void requestRegistrationState(int request, void *data,
     int skip, cs_status = 0;
     int i;
 
-    /* IMPORTANT: Will take screen state lock here. Make sure to always call
-                  releaseScreenStateLock BEFORE returning! */
-    getScreenStateLock();
-    if (!getScreenState()) {
-        (void)at_send_command("AT+CREG=2"); /* Ignore the response, not VITAL. */
-    }
-
     /* Setting default values in case values are not returned by AT command */
     for (i = 0; i < resp_size; i++)
         responseStr[i] = NULL;
 
     memset(response, 0, sizeof(response));
 
+    /* IMPORTANT: Will take screen state lock here. Make sure to always call
+                  releaseScreenStateLock BEFORE returning! */
+    getScreenStateLock();
+    if (!getScreenState())
+        (void)at_send_command("AT+CREG=2"); /* Ignore the response, not VITAL. */
+    else {
+        response[0] = s_creg_stat;
+        response[1] = s_creg_lac;
+        response[2] = s_creg_cid;
+        if (response[0] == CGREG_STAT_REG_DENIED)
+            response[13] = convertCsRegistrationDeniedReason(s_cs_status);
+        goto cached;
+    }
+
     err = at_send_command_singleline("AT+CREG?", "+CREG:", &creg_resp);
+
+    if (at_get_cme_error(err) == CME_SIM_NOT_INSERTED)
+        goto no_sim;
 
     if (err != AT_NOERROR)
         goto error;
@@ -1963,11 +2173,18 @@ void requestRegistrationState(int request, void *data,
 
         response[13] = convertCsRegistrationDeniedReason(cs_status);
         s_registrationDeniedReason = response[13];
-        err = asprintf(&responseStr[13], "%d", response[13]);
-        if (err < 0)
-            goto error;
     }
 
+    s_creg_stat = response[0];
+    s_creg_lac = response[1];
+    s_creg_cid = response[2];
+
+cached:
+    if (response[0] == CGREG_STAT_REG_HOME_NET ||
+        response[0] == CGREG_STAT_ROAMING)
+        responseStr[3] = getNetworkType(0);
+
+no_sim:
     err = asprintf(&responseStr[0], "%d", response[0]);
     if (err < 0)
             goto error;
@@ -1982,9 +2199,10 @@ void requestRegistrationState(int request, void *data,
     if (err < 0)
         goto error;
 
-    if (response[0] == CGREG_STAT_REG_HOME_NET ||
-        response[0] == CGREG_STAT_ROAMING)
-        responseStr[3] = getNetworkType(0);
+    if (response[13] > 0)
+        err = asprintf(&responseStr[13], "%d", response[13]);
+    if (err < 0)
+        goto error;
 
     RIL_onRequestComplete(t, RIL_E_SUCCESS, responseStr,
                           resp_size * sizeof(char *));
@@ -2022,13 +2240,30 @@ void requestOperator(void *data, size_t datalen, RIL_Token t)
     ATLine *cursor;
     static const int num_resp_lines = 3;
     char *response[num_resp_lines];
+    static char *old_response[3] = {NULL, NULL, NULL};
     ATResponse *atresponse = NULL;
 
     memset(response, 0, sizeof(response));
 
+    if ((s_cs_status != E2REG_REGISTERED) && (s_ps_status != E2REG_REGISTERED))
+        goto no_sim;
+
+    if (!(s_reg_change)) {
+        if (old_response[0] != NULL) {
+            memcpy(response, old_response, sizeof(old_response));
+            ALOGW("%s() Using buffered info since no change in state", __func__);
+            goto no_sim;
+        }
+    }
+
+    s_reg_change = 0;
+
     err = at_send_command_multiline
         ("AT+COPS=3,0;+COPS?;+COPS=3,1;+COPS?;+COPS=3,2;+COPS?", "+COPS:",
          &atresponse);
+
+    if (at_get_cme_error(err) == CME_SIM_NOT_INSERTED)
+        goto no_sim;
 
     if (err != AT_NOERROR)
         goto error;
@@ -2093,7 +2328,17 @@ void requestOperator(void *data, size_t datalen, RIL_Token t)
         response[1] = alloca(strlen(response[2]) + 1);
         strcpy(response[1], response[2]);
     }
+    for (i = 0; i < num_resp_lines; i++) {
+        if (old_response[i] != NULL) {
+            free(old_response[i]);
+            old_response[i] = NULL;
+        }
+        if (response[i] != NULL) {
+            old_response[i] = strdup(response[i]);
+        }
+    }
 
+no_sim:
     RIL_onRequestComplete(t, RIL_E_SUCCESS, response, sizeof(response));
 
 finally:

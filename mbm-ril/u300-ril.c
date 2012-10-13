@@ -299,35 +299,21 @@ static void requestScreenState(void *data, size_t datalen, RIL_Token t)
     if (screenState == 1) {
         /* Screen is on - be sure to enable all unsolicited notifications again. */
         err = at_send_command("AT+CREG=2");
-        if (err != AT_NOERROR)
-            goto error;
         err = at_send_command("AT+CGREG=2");
-        if (err != AT_NOERROR)
-            goto error;
         err = at_send_command("AT+CGEREP=1,0");
-        if (err != AT_NOERROR)
-            goto error;
 
         isSimSmsStorageFull(NULL);
         pollSignalStrength((void *)-1);
 
         err = at_send_command("AT+CMER=3,0,0,1");
-        if (err != AT_NOERROR)
-            goto error;
+
     } else if (screenState == 0) {
         /* Screen is off - disable all unsolicited notifications. */
         err = at_send_command("AT+CREG=0");
-        if (err != AT_NOERROR)
-            goto error;
         err = at_send_command("AT+CGREG=0");
-        if (err != AT_NOERROR)
-            goto error;
         err = at_send_command("AT+CGEREP=0,0");
-        if (err != AT_NOERROR)
-            goto error;
         err = at_send_command("AT+CMER=3,0,0,0");
-        if (err != AT_NOERROR)
-            goto error;
+
     } else {
         /* Not a defined value - error. */
         goto error;
@@ -423,6 +409,11 @@ static void processRequest(int request, void *data, size_t datalen, RIL_Token t)
              request == RIL_REQUEST_GET_IMEISV ||
              request == RIL_REQUEST_GET_IMEI ||
              request == RIL_REQUEST_BASEBAND_VERSION ||
+             request == RIL_REQUEST_DATA_REGISTRATION_STATE ||
+             request == RIL_REQUEST_VOICE_REGISTRATION_STATE ||
+             request == RIL_REQUEST_OPERATOR ||
+             request == RIL_REQUEST_QUERY_NETWORK_SELECTION_MODE ||
+             request == RIL_REQUEST_SCREEN_STATE ||
              request == RIL_REQUEST_GET_CURRENT_CALLS)) {
         RIL_onRequestComplete(t, RIL_E_GENERIC_FAILURE, NULL, 0);
         return;
@@ -746,6 +737,9 @@ static char initializeCommon(void)
     /* Try to register for hotswap events. Don't care if it fails. */
     err = at_send_command("AT*EESIMSWAP=1");
 
+    /* Try to register for network capability events. Don't care if it fails. */
+    err = at_send_command("AT*ERINFO=1");
+
     /* Disable Service Reporting. */
     err = at_send_command("AT+CR=0");
     if (err != AT_NOERROR)
@@ -861,12 +855,6 @@ static void onUnsolicited(const char *s, const char *sms_pdu)
         return;
 
     if (strStartsWith(s, "*ETZV:")) {
-        /* If we're in screen state, we have disabled CREG, but the ETZV
-           will catch those few cases. So we send network state changed as
-           well on NITZ. */
-        RIL_onUnsolicitedResponse(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED,
-                                  NULL, 0);
-
         onNetworkTimeReceived(s);
     } else if ((strStartsWith(s, "*EPEV")) || (strStartsWith(s, "+CGEV:"))) {
         /* Pin event, poll SIM State! */
@@ -876,16 +864,15 @@ static void onUnsolicited(const char *s, const char *sms_pdu)
     else if(strStartsWith(s, "*E2NAP:")) {
         enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSIMState, (void*) 1, NULL);
         onConnectionStateChanged(s);
-    } else if(strStartsWith(s, "*E2REG:"))
+    } else if(strStartsWith(s, "*ERINFO:"))
+        onNetworkCapabilityChanged(s);
+    else if(strStartsWith(s, "*E2REG:"))
         onNetworkStatusChanged(s);
     else if (strStartsWith(s, "*EESIMSWAP:"))
         onSimHotswap(s);
     else if (strStartsWith(s, "+CREG:")
-            || strStartsWith(s, "+CGREG:")) {
-/*TODO: If only reporting back network change Android can sometimes hang!! */
-        RIL_onUnsolicitedResponse(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED,
-                                  NULL, 0);
-    }
+            || strStartsWith(s, "+CGREG:"))
+        onRegistrationStatusChanged(s);
     else if (strStartsWith(s, "+CMT:"))
         onNewSms(sms_pdu);
     else if (strStartsWith(s, "+CBM:"))
@@ -946,6 +933,10 @@ static void onATReaderClosed(void)
 /* Called on command thread. */
 static void onATTimeout(void)
 {
+    static int strike = 0;
+
+    strike++;
+
     ALOGD("%s() AT channel timeout", __func__);
 
      /* Last resort, throw escape on the line, close the channel
@@ -957,7 +948,14 @@ static void onATTimeout(void)
     setRadioState(RADIO_STATE_UNAVAILABLE);
     signalCloseQueues();
 
-    /* TODO We may cause a radio reset here. */
+    /* Eperimental reboot of module on HP Touchpad 4G */
+    if (strike == 2) {
+        strike = 0;
+        ALOGW("*** Cold booting module ***");
+        system("echo 0 > /sys/bus/platform/devices/mdmgpio/mdm_poweron");
+        sleep(1);
+        system("echo 1 > /sys/bus/platform/devices/mdmgpio/mdm_poweron");
+    }
 }
 
 static void usage(char *s)
@@ -1104,6 +1102,7 @@ static void *queueRunner(void *param)
 
         at_set_on_reader_closed(onATReaderClosed);
         at_set_on_timeout(onATTimeout);
+        at_set_timeout_msec(1000 * 30);
 
         q = &s_requestQueue;
 

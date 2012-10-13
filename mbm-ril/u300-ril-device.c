@@ -41,6 +41,86 @@ static pthread_mutex_t s_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char** s_deviceInfo = NULL;
 static pthread_mutex_t s_deviceInfo_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+char *getTime(void)
+{
+    ATResponse *atresponse = NULL;
+    int err;
+    char *line;
+    char *currtime = NULL;
+    char *resp = NULL;
+
+    err = at_send_command_singleline("AT+CCLK?", "+CCLK:", &atresponse);
+
+    if (err != AT_NOERROR)
+        goto error;
+
+    line = atresponse->p_intermediates->line;
+
+    err = at_tok_start(&line);
+    if (err < 0)
+        goto error;
+
+    /* Read current time */
+    err = at_tok_nextstr(&line, &currtime);
+    if (err < 0)
+        goto error;
+
+    /* Skip the first two digits of year */
+    resp = strdup(currtime+2);
+
+finally:
+    at_response_free(atresponse);
+    return resp;
+
+error:
+    ALOGE("%s() Failed to read current time", __func__);
+    goto finally;
+}
+
+void sendTime(void *p)
+{
+    time_t t;
+    struct tm tm;
+    char *timestr;
+    char *currtime;
+    char str[20];
+    char tz[6];
+    int num[4];
+    int tzi;
+    int i;
+    (void) p;
+
+    tzset();
+    t = time(NULL);
+
+    if (!(localtime_r(&t, &tm)))
+        return;
+    if (!(strftime(tz, 12, "%z", &tm)))
+        return;
+
+    for (i = 0; i < 4; i++)
+        num[i] = tz[i+1] - '0';
+
+    /* convert timezone hours to timezone quarters of hours */
+    tzi = (num[0] * 10 + num[1]) * 4 + (num[2] * 10 + num[3]) / 15;
+    strftime(str, 20, "%y/%m/%d,%T", &tm);
+    asprintf(&timestr, "%s%c%02d", str, tz[0], tzi);
+
+    /* Read time first to make sure an update is necessary */
+    currtime = getTime();
+    if (NULL == currtime)
+        return;
+
+    if (NULL == strstr(currtime, timestr))
+        at_send_command("AT+CCLK=\"%s\"", timestr);
+    else
+        ALOGW("%s() Skipping setting same time again!", __func__);
+
+    free(timestr);
+    free(currtime);
+    return;
+}
+
 void clearDeviceInfo(void)
 {
     int i = 0;

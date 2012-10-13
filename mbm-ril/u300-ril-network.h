@@ -28,7 +28,10 @@ void onNetworkTimeReceived(const char *s);
 void onSignalStrengthChanged(const char *s);
 void onNetworkStatusChanged(const char *s);
 
-int getPreferredNetworkType(void);
+void onRegistrationStatusChanged(const char *s);
+
+void onNetworkCapabilityChanged(const char *s);
+
 int getPreferredNetworkType(void);
 
 void requestSetNetworkSelectionAutomatic(void *data, size_t datalen, RIL_Token t);

@@ -1243,13 +1243,15 @@ int at_send_command_multiline (const char *command,
 
 /**
  * Set the default timeout. Let it be reasonably high, some commands
- * take their time. Default is 10 minutes.
+ * take their time.
  */
 void at_set_timeout_msec(int timeout)
 {
     struct atcontext *ac = getAtContext();
 
     ac->timeoutMsec = timeout;
+
+    LOGI("Setting AT command timeout to %d ms", timeout);
 }
 
 /** This callback is invoked on the command thread. */

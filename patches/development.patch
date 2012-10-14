@@ -1,0 +1,14 @@
+diff --git a/sdk_overlay/frameworks/base/core/res/res/values/config.xml b/sdk_overlay/frameworks/base/core/res/res/values/config.xml
+index fdeb8bd..38e5e0b 100644
+--- a/sdk_overlay/frameworks/base/core/res/res/values/config.xml
++++ b/sdk_overlay/frameworks/base/core/res/res/values/config.xml
+@@ -20,6 +20,9 @@
+ <!-- These resources are around just to allow their values to be customized
+      for different hardware and product builds. -->
+ <resources>
++    <!-- Package name providing network location support. -->
++    <string name="config_networkLocationProviderPackageName" translatable="false">com.google.android.location</string>
++
+     <!-- Package name providing geocoder API support. -->
+     <string name="config_geocodeProviderPackageName" translatable="false">com.google.android.location</string>
+ 

@@ -1,0 +1,36 @@
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index 83df6f4..9bf0d36 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -275,11 +275,16 @@ on boot
+ #   ReadMin, ReadInitial, ReadMax, WriteMin, WriteInitial, WriteMax,
+     setprop net.tcp.buffersize.default 4096,87380,110208,4096,16384,110208
+     setprop net.tcp.buffersize.wifi    524288,1048576,2097152,262144,524288,1048576
+-    setprop net.tcp.buffersize.lte     524288,1048576,2097152,262144,524288,1048576
++    setprop net.tcp.buffersize.lte     4094,87380,1220608,4096,16384,1220608
+     setprop net.tcp.buffersize.umts    4094,87380,110208,4096,16384,110208
+-    setprop net.tcp.buffersize.hspa    4094,87380,262144,4096,16384,262144
++    setprop net.tcp.buffersize.hspa    4094,87380,1220608,4096,16384,1220608
++    setprop net.tcp.buffersize.hsupa   4094,87380,1220608,4096,16384,1220608
++    setprop net.tcp.buffersize.hsdpa   4094,87380,1220608,4096,16384,1220608
++    setprop net.tcp.buffersize.hspap   4094,87380,1220608,4096,16384,1220608
+     setprop net.tcp.buffersize.edge    4093,26280,35040,4096,16384,35040
+     setprop net.tcp.buffersize.gprs    4092,8760,11680,4096,8760,11680
++    setprop net.tcp.buffersize.evdo    4094,87380,262144,4096,16384,262144
++    setprop net.tcp.buffersize.evdo_b  4094,87380,262144,4096,16384,262144
+ 
+ # allow system to modify ksm control files
+     chown root system /sys/kernel/mm/ksm/pages_to_scan
+diff --git a/toolbox/dmesg.c b/toolbox/dmesg.c
+index e57f607..76c8245 100644
+--- a/toolbox/dmesg.c
++++ b/toolbox/dmesg.c
+@@ -5,7 +5,7 @@
+ #include <sys/klog.h>
+ #include <string.h>
+ 
+-#define KLOG_BUF_SHIFT	17	/* CONFIG_LOG_BUF_SHIFT from our kernel */
++#define KLOG_BUF_SHIFT	19	/* CONFIG_LOG_BUF_SHIFT from our kernel */
+ #define KLOG_BUF_LEN	(1 << KLOG_BUF_SHIFT)
+ 
+ int dmesg_main(int argc, char **argv)

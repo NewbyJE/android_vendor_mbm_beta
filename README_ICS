@@ -1,0 +1,100 @@
+Overview - Ice Cream Sandwich Version
+================================================================
+This MBM HAL is based on the pre-release MBM HAL 4.0.0.0 BETA for CyanogenMod 10 (Android JB): http://sourceforge.net/apps/mediawiki/mbm/index.php?title=MBM
+
+It has been modified specifically for the HP TouchPad 4G which uses the Ericsson f5521gw Mobile Broadband Module (MBM).  The modifications may be applicable to other platforms using Ericsson MBMs and running Android JB.  
+
+...
+
+Modification Tracking
+================================================================
+Enhanced network reporting and status bar symbols for f5521gw:
+
+  Standard        Download    Upload     Symbol
+  ------------    --------    --------   ------
+  GSM/GPRS        0.0856      0.0428      "G"
+  EDGE Evol       1.8944      0.9472      "E"
+  WCDMA           0.384       0.384       "3G"
+  HSDPA           14.4        0.384       "H"
+  HSDPA+HSUPA     14.4        5.76        "H"
+  HSPA Evol       21          5.76        "H+"
+
+Added utilities to assist with debugging:
+
+  Added aldtf.sh (in /system/xbin): Run from su prompt to create log files in 'sdcard/logs'
+  Added xmesg (in system/bin): Creates kernel logs similar to dmesg, but with time stamps
+
+...
+
+================================================================
+Note:  !!! As of 10/14/2012 this code is still being tested !!!
+================================================================
+
+================================================================
+Build Instructions for HP TouchPad 4G (ics branch)
+----------------------------------------------------------------
+Note: a script is included in vendor/mbm/patches to assist with
+Steps 3 and 4.  You will need to adjust paths for your setup.
+================================================================
+
+1. The files in this repository should be added in vendor/mbm. 
+
+2. Modify your local_manifest.xml, as follows:
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <manifest>
+     <project name="CyanogenMod/hp-kernel-tenderloin" path="kernel/hp/tenderloin" remote="github" revision="ics" />
+     <project name="CyanogenMod/android_hardware_atheros_wlan" path="hardware/atheros/wlan" remote="github" revision="jellybean" />
+     <project name="NewbyJE/android_device_hp_tenderloin" path="device/hp/tenderloin" remote="github" revision="jellybean" />
+     <project name="NewbyJE/android_vendor_mbm_beta" path="vendor/mbm" remote="github" revision="jellybean" />
+   </manifest>
+
+3. The following modifications are pending and should be cherrypicked until they are committed at CyanogenMod:
+
+   Required
+   --------
+   drivers: Update to most recent acm, wdm, ncm, and usbnet drivers
+      git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/16/24816/1 && git cherry-pick FETCH_HEAD
+   drivers: Fix part of the hub race condition on TouchPad 2.6.35
+      git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/17/24817/1 && git cherry-pick FETCH_HEAD
+   tenderloin4g_android_defconfig: Update for MBM HAL 4.0.0 BETA
+      git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/18/24818/1 && git cherry-pick FETCH_HEAD
+   mdmgpio: Change permissions for mdm_poweron   
+      git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/19/24819/1 && git cherry-pick FETCH_HEAD
+   devices: enables cdc-wdmX devices for ICS
+      git fetch http://review.cyanogenmod.com/CyanogenMod/android_system_core refs/changes/25/24825/1 && git cherry-pick FETCH_HEAD
+   telephony: neighboring cells are now handled properly
+      git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/39/21339/1 && git cherry-pick FETCH_HEAD
+   telephony: Fix MMS for when operator has different APNs for Data and MMS
+      git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick FETCH_HEAD
+         
+   Optional
+   --------
+   Fixed Touchpad magnetometer
+      git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/49/24149/2 && git cherry-pick FETCH_HEAD
+   Fixed Touchpad magnetometer forcing more reasonable update rate
+      git fetch http://review.cyanogenmod.com/CyanogenMod/android_device_hp_tenderloin refs/changes/15/24215/1 && git cherry-pick FETCH_HEAD
+   SystemUI/res: Move files to proper directory
+      git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/26/24826/1 && git cherry-pick FETCH_HEAD
+
+4. Apply the following additional patches from the patches directory in this repo
+
+   Replace 'android/system' in the following instructions with your Android build directory.  
+
+   Required
+   --------
+   Additional support for HSPA+ (HSPAP) (in android/system/frameworks/base)
+      patch -p1 < ~/android/system/vendor/mbm/patches/frameworks_base.patch
+   Increase size of logger files to assist with debugging (in android/system/kernel/hp/tenderloin)
+      patch -p1 < ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin.patch
+   Proper radio buffer sizes and increased size for dmesg dump (in android/system/system/core)
+      patch -p1 < ~/android/system/vendor/mbm/patches/system_core.patch
+
+   Optional
+   --------
+   Ability to enter AT commands to the MBM HAL from the command line using radiooptions (in android/system/hardware/ril)
+      patch -p1 < ~/android/system/vendor/mbm/patches/hardware_ril.patch
+   Non-release builds and increase default boot animation resolution (in android/system/vendor/cm)
+      patch -p1 < ~/android/system/vendor/mbm/patches/vendor_cm.patch
+
+

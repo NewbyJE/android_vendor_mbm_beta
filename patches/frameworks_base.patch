@@ -1,0 +1,79 @@
+diff --git a/core/java/android/net/MobileDataStateTracker.java b/core/java/android/net/MobileDataStateTracker.java
+index 2ed62f9..d4459b4 100644
+--- a/core/java/android/net/MobileDataStateTracker.java
++++ b/core/java/android/net/MobileDataStateTracker.java
+@@ -330,9 +330,11 @@ public class MobileDataStateTracker implements NetworkStateTracker {
+             networkTypeStr = "hsupa";
+             break;
+         case TelephonyManager.NETWORK_TYPE_HSPA:
+-        case TelephonyManager.NETWORK_TYPE_HSPAP:
+             networkTypeStr = "hspa";
+             break;
++        case TelephonyManager.NETWORK_TYPE_HSPAP:
++            networkTypeStr = "hspap";
++            break;
+         case TelephonyManager.NETWORK_TYPE_CDMA:
+             networkTypeStr = "cdma";
+             break;
+diff --git a/core/java/android/os/BatteryStats.java b/core/java/android/os/BatteryStats.java
+index 438c536..f666ca0 100644
+--- a/core/java/android/os/BatteryStats.java
++++ b/core/java/android/os/BatteryStats.java
+@@ -822,12 +822,13 @@ public abstract class BatteryStats implements Parcelable {
+     public static final int DATA_CONNECTION_EVDO_B = 12;
+     public static final int DATA_CONNECTION_LTE = 13;
+     public static final int DATA_CONNECTION_EHRPD = 14;
+-    public static final int DATA_CONNECTION_OTHER = 15;
++    public static final int DATA_CONNECTION_HSPAP = 15;
++    public static final int DATA_CONNECTION_OTHER = 16;
+ 
+     static final String[] DATA_CONNECTION_NAMES = {
+         "none", "gprs", "edge", "umts", "cdma", "evdo_0", "evdo_A",
+         "1xrtt", "hsdpa", "hsupa", "hspa", "iden", "evdo_b", "lte",
+-        "ehrpd", "other"
++        "ehrpd", "hspap", "other"
+     };
+     
+     public static final int NUM_DATA_CONNECTION_TYPES = DATA_CONNECTION_OTHER+1;
+diff --git a/core/java/com/android/internal/os/BatteryStatsImpl.java b/core/java/com/android/internal/os/BatteryStatsImpl.java
+index fec4cbc..f6ec93d 100644
+--- a/core/java/com/android/internal/os/BatteryStatsImpl.java
++++ b/core/java/com/android/internal/os/BatteryStatsImpl.java
+@@ -1971,6 +1971,9 @@ public final class BatteryStatsImpl extends BatteryStats {
+                 case TelephonyManager.NETWORK_TYPE_HSPA:
+                     bin = DATA_CONNECTION_HSPA;
+                     break;
++                case TelephonyManager.NETWORK_TYPE_HSPAP:
++                    bin = DATA_CONNECTION_HSPAP;
++                    break;
+                 case TelephonyManager.NETWORK_TYPE_IDEN:
+                     bin = DATA_CONNECTION_IDEN;
+                     break;
+diff --git a/packages/SystemUI/res/values/config.xml b/packages/SystemUI/res/values/config.xml
+index 8792fdf..83c6fd4 100644
+--- a/packages/SystemUI/res/values/config.xml
++++ b/packages/SystemUI/res/values/config.xml
+@@ -29,7 +29,7 @@
+      ImageView -->
+     <bool name="config_recents_thumbnail_image_fits_to_xy">false</bool>
+ 
+-    <!-- Control whether status bar should distinguish HSPA data icon form UMTS
++    <!-- Control whether status bar should distinguish HSPA data icon from UMTS
+     data icon on devices -->
+     <bool name="config_hspa_data_distinguishable">false</bool>
+ 
+diff --git a/services/java/com/android/server/location/GpsLocationProvider.java b/services/java/com/android/server/location/GpsLocationProvider.java
+index 00788ba..c97bdda 100755
+--- a/services/java/com/android/server/location/GpsLocationProvider.java
++++ b/services/java/com/android/server/location/GpsLocationProvider.java
+@@ -1506,7 +1506,8 @@ public class GpsLocationProvider implements LocationProviderInterface {
+                 if (networkType == TelephonyManager.NETWORK_TYPE_UMTS
+                     || networkType == TelephonyManager.NETWORK_TYPE_HSDPA
+                     || networkType == TelephonyManager.NETWORK_TYPE_HSUPA
+-                    || networkType == TelephonyManager.NETWORK_TYPE_HSPA) {
++                    || networkType == TelephonyManager.NETWORK_TYPE_HSPA
++                    || networkType == TelephonyManager.NETWORK_TYPE_HSPAP) {
+                     type = AGPS_REF_LOCATION_TYPE_UMTS_CELLID;
+                 } else {
+                     type = AGPS_REF_LOCATION_TYPE_GSM_CELLID;
+

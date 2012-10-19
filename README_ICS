@@ -31,7 +31,7 @@ Note:  !!! As of 10/14/2012 this code is still being tested !!!
 ================================================================
 
 ================================================================
-Build Instructions for HP TouchPad 4G (ics branch)
+Build Instructions for HP TouchPad 4G (ICS branch)
 ----------------------------------------------------------------
 Note: a script is included in vendor/mbm/patches to assist with
 Steps 3 and 4.  You will need to adjust paths for your setup.
@@ -44,9 +44,8 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
    <?xml version="1.0" encoding="UTF-8"?>
    <manifest>
      <project name="CyanogenMod/hp-kernel-tenderloin" path="kernel/hp/tenderloin" remote="github" revision="ics" />
-     <project name="CyanogenMod/android_hardware_atheros_wlan" path="hardware/atheros/wlan" remote="github" revision="jellybean" />
-     <project name="NewbyJE/android_device_hp_tenderloin" path="device/hp/tenderloin" remote="github" revision="jellybean" />
-     <project name="NewbyJE/android_vendor_mbm_beta" path="vendor/mbm" remote="github" revision="jellybean" />
+     <project name="NewbyJE/android_device_hp_tenderloin" path="device/hp/tenderloin" remote="github" revision="ics" />
+     <project name="NewbyJE/android_vendor_mbm_beta" path="vendor/mbm" remote="github" revision="ics" />
    </manifest>
 
 3. The following modifications are pending and should be cherrypicked until they are committed at CyanogenMod:
@@ -96,5 +95,4 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
       patch -p1 < ~/android/system/vendor/mbm/patches/hardware_ril.patch
    Non-release builds and increase default boot animation resolution (in android/system/vendor/cm)
       patch -p1 < ~/android/system/vendor/mbm/patches/vendor_cm.patch
-
 

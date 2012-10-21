@@ -16,28 +16,31 @@ repo sync -j16
 #
 echo "apply device/hp/tenderloin cherrypicks"
 pushd device/hp/tenderloin
-git fetch http://review.cyanogenmod.com/CyanogenMod/android_device_hp_tenderloin refs/changes/15/24215/1 && git cherry-pick FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/android_device_hp_tenderloin refs/changes/15/24215/1 && git cherry-pick -n FETCH_HEAD
+git reset HEAD
 popd
 #
 echo "apply frameworks/base cherrypicks"
 pushd frameworks/base
-git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/39/21339/1 && git cherry-pick FETCH_HEAD
-git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick FETCH_HEAD
-git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/26/24826/1 && git cherry-pick FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick -n FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/26/24826/1 && git cherry-pick -n FETCH_HEAD
+git reset HEAD
 popd
 #
 echo "apply kernel/hp/tenderloin cherrypicks"
 pushd kernel/hp/tenderloin
-git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/16/24816/1 && git cherry-pick FETCH_HEAD
-git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/17/24817/1 && git cherry-pick FETCH_HEAD
-git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/18/24818/1 && git cherry-pick FETCH_HEAD
-git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/19/24819/1 && git cherry-pick FETCH_HEAD
-git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/49/24149/2 && git cherry-pick FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/16/24816/1 && git cherry-pick -n FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/17/24817/1 && git cherry-pick -n FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/18/24818/1 && git cherry-pick -n FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/19/24819/1 && git cherry-pick -n FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/49/24149/2 && git cherry-pick -n FETCH_HEAD
+git reset HEAD
 popd
 #
 echo "apply system/core cherrypick"
 pushd system/core
-git fetch http://review.cyanogenmod.com/CyanogenMod/android_system_core refs/changes/25/24825/1 && git cherry-pick FETCH_HEAD
+git fetch http://review.cyanogenmod.com/CyanogenMod/android_system_core refs/changes/25/24825/1 && git cherry-pick -n FETCH_HEAD
+git reset HEAD
 popd
 #
 echo "frameworks_base patch"
@@ -53,6 +56,7 @@ cd ~/android/system
 echo "kernel_hp_tenderloin patch"
 cd kernel/hp/tenderloin
 git apply ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin.patch
+git apply ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin_A6.patch
 cd ~/android/system
 #
 echo "system_core patch"

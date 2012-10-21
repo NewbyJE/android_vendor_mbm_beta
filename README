@@ -43,9 +43,10 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
 
    <?xml version="1.0" encoding="UTF-8"?>
    <manifest>
-     <project name="CyanogenMod/hp-kernel-tenderloin" path="kernel/hp/tenderloin" remote="github" revision="ics" />
-     <project name="NewbyJE/android_device_hp_tenderloin" path="device/hp/tenderloin" remote="github" revision="ics" />
+     <remote fetch="git://github.com/" name="gh" />
      <project name="NewbyJE/android_vendor_mbm_beta" path="vendor/mbm" remote="github" revision="ics" />
+     <project name="NewbyJE/android_device_hp_tenderloin" path="device/hp/tenderloin" remote="github" revision="ics" />
+     <project name="CyanogenMod/hp-kernel-tenderloin" path="kernel/hp/tenderloin" remote="github" revision="ics" />
    </manifest>
 
 3. The following modifications are pending and should be cherrypicked until they are committed at CyanogenMod:
@@ -62,8 +63,6 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
       git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/19/24819/1 && git cherry-pick FETCH_HEAD
    devices: enables cdc-wdmX devices for ICS
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_system_core refs/changes/25/24825/1 && git cherry-pick FETCH_HEAD
-   telephony: neighboring cells are now handled properly
-      git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/39/21339/1 && git cherry-pick FETCH_HEAD
    telephony: Fix MMS for when operator has different APNs for Data and MMS
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick FETCH_HEAD
          
@@ -95,4 +94,6 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
       patch -p1 < ~/android/system/vendor/mbm/patches/hardware_ril.patch
    Non-release builds and increase default boot animation resolution (in android/system/vendor/cm)
       patch -p1 < ~/android/system/vendor/mbm/patches/vendor_cm.patch
+   If any A6 alarm settings have changed, set them back to the default
+      patch -p1 < ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin_A6.patch
 

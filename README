@@ -27,7 +27,7 @@ Added utilities to assist with debugging:
 ...
 
 ================================================================
-Note:  !!! As of 10/14/2012 this code is still being tested !!!
+Note:  !!! As of 10/21/2012 this code is still being tested !!!
 ================================================================
 
 ================================================================
@@ -65,6 +65,8 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick FETCH_HEAD
    core and telephony: Additional HSPAP support
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/57/24957/1 && git cherry-pick FETCH_HEAD
+   special, revert qcom update until fixed
+      git fetch http://review.cyanogenmod.com/CyanogenMod/android_hardware_qcom_display refs/changes/74/24874/1 && git cherry-pick FETCH_HEAD
          
    Optional
    --------
@@ -72,8 +74,6 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
       git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/49/24149/2 && git cherry-pick FETCH_HEAD
    Fixed Touchpad magnetometer forcing more reasonable update rate
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_device_hp_tenderloin refs/changes/15/24215/1 && git cherry-pick FETCH_HEAD
-   rework CM_VERSION (for non-release builds)
-      git fetch http://review.cyanogenmod.com/CyanogenMod/android_vendor_cm refs/changes/44/16744/1 && git cherry-pick FETCH_HEAD
 
 4. Apply the following additional patches from the patches directory in this repo
 
@@ -94,5 +94,7 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
       patch -p1 < ~/android/system/vendor/mbm/patches/hardware_ril.patch
    Increase default boot animation resolution (in android/system/vendor/cm)
       patch -p1 < ~/android/system/vendor/mbm/patches/vendor_cm.patch
+   If any A6 alarm settings have changed, set them back to the default
+      patch -p1 < ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin_A6.patch
 
 

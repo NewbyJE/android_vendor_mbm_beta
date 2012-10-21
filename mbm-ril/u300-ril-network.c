@@ -2245,7 +2245,10 @@ void requestOperator(void *data, size_t datalen, RIL_Token t)
 
     memset(response, 0, sizeof(response));
 
-    if ((s_cs_status != E2REG_REGISTERED) && (s_ps_status != E2REG_REGISTERED))
+    if (!(s_creg_stat == CGREG_STAT_REG_HOME_NET ||
+        s_creg_stat == CGREG_STAT_ROAMING ||
+        s_cgreg_stat == CGREG_STAT_REG_HOME_NET ||
+        s_cgreg_stat == CGREG_STAT_ROAMING))
         goto no_sim;
 
     if (!(s_reg_change)) {

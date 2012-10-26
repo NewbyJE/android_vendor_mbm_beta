@@ -42,7 +42,6 @@
 #include <utils/Log.h>
 
 #include "u300-ril.h"
-#include "u300-ril-device.h"
 #include "net-utils.h"
 
 #define getNWType(data) ((data) ? (data) : "IP")
@@ -344,8 +343,7 @@ static int disconnect(void)
     for (i = 0; i < MBM_ENAP_DISCONNECT_TIME * 5; i++) {
         e2napState = getE2napState();
         if ((e2napState == E2NAP_STATE_DISCONNECTED) ||
-                (e2napState == E2NAP_STATE_UNKNOWN) ||
-                (RADIO_STATE_UNAVAILABLE == getRadioState()))
+                (e2napState == E2NAP_STATE_UNKNOWN))
             break;
         usleep(200 * 1000);
     }
@@ -687,8 +685,7 @@ down:
     for (i = 0; i < MBM_ENAP_CONNECT_TIME * 5; i++) {
         e2napState = getE2napState();
         if (e2napState == E2NAP_STATE_CONNECTED
-                || e2napState == E2NAP_STATE_DISCONNECTED
-                || RADIO_STATE_UNAVAILABLE == getRadioState()) {
+                || e2napState == E2NAP_STATE_DISCONNECTED) {
             ALOGD("%s() %s", __func__, e2napStateToString(e2napState));
             break;
         }

@@ -1208,15 +1208,8 @@ void requestSetNetworkSelectionManual(void *data, size_t datalen,
     if (mccMnc == NULL)
         goto error;
 
-    /* Increase the AT command timeout for this operation */
-    at_set_timeout_msec(1000 * 60 * 6);
-
     /* Build and send command. */
     err = at_send_command("AT+COPS=1,2,\"%s\"", mccMnc);
-
-    /* Restore default AT command timeout */
-    at_set_timeout_msec(1000 * 30);
-
     if (err != AT_NOERROR)
         goto error;
 
@@ -1966,17 +1959,10 @@ void requestGprsRegistrationState(int request, void *data,
         response[4] = convertPsRegistrationDeniedReason(ps_status);
     }
 
-    if (s_cgreg_stat != response[0] ||
-        s_cgreg_lac != response[1] ||
-        s_cgreg_cid != response[2] ||
-        s_cgreg_act != response[3]) {
-
-        s_cgreg_stat = response[0];
-        s_cgreg_lac = response[1];
-        s_cgreg_cid = response[2];
-        s_cgreg_act = response[3];
-        s_reg_change = 1;
-    }
+    s_cgreg_stat = response[0];
+    s_cgreg_lac = response[1];
+    s_cgreg_cid = response[2];
+    s_cgreg_act = response[3];
 
 cached:
     if (response[0] == CGREG_STAT_REG_HOME_NET ||
@@ -2189,15 +2175,9 @@ void requestRegistrationState(int request, void *data,
         s_registrationDeniedReason = response[13];
     }
 
-    if (s_creg_stat != response[0] ||
-        s_creg_lac != response[1] ||
-        s_creg_cid != response[2]) {
-
-        s_creg_stat = response[0];
-        s_creg_lac = response[1];
-        s_creg_cid = response[2];
-        s_reg_change = 1;
-    }
+    s_creg_stat = response[0];
+    s_creg_lac = response[1];
+    s_creg_cid = response[2];
 
 cached:
     if (response[0] == CGREG_STAT_REG_HOME_NET ||

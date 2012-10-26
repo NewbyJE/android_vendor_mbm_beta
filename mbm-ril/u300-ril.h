@@ -31,7 +31,6 @@
 
 void getScreenStateLock(void);
 int getScreenState(void);
-void setScreenState(int screenState);
 void releaseScreenStateLock(void);
 
 extern char* ril_iface;

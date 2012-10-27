@@ -345,6 +345,7 @@ void requestBasebandVersion(void *data, size_t datalen, RIL_Token t)
 void onSIMReady(void *p)
 {
     int err = 0;
+    int screenState;
     (void) p;
 
     /* Check if ME is ready to set preferred message storage */
@@ -374,27 +375,8 @@ void onSIMReady(void *p)
     */
     at_send_command("AT+CNMI=2,2,2,1,0");
 
-    /* Subscribe to network registration events.
-     *  n = 2 - Enable network registration and location information
-     *          unsolicited result code +CREG: <stat>[,<lac>,<ci>]
-     */
-    err = at_send_command("AT+CREG=2");
-    if (err != AT_NOERROR) {
-        /* Some handsets -- in tethered mode -- don't support CREG=2. */
-        at_send_command("AT+CREG=1");
-    }
-
     /* Subscribe to network status events */
     at_send_command("AT*E2REG=1");
-
-    /* Subscribe to Packet Domain Event Reporting.
-     *  mode = 1 - Discard unsolicited result codes when ME-TE link is reserved
-     *             (e.g. in on-line data mode); otherwise forward them directly
-     *             to the TE.
-     *   bfr = 0 - MT buffer of unsolicited result codes defined within this
-     *             command is cleared when <mode> 1 is entered.
-     */
-    at_send_command("AT+CGEREP=1,0");
 
     /* Configure Short Message (SMS) Format
      *  mode = 0 - PDU mode.
@@ -410,18 +392,18 @@ void onSIMReady(void *p)
         at_send_command("AT*ETZR=2");
     }
 
-    /* Configure Mobile Equipment Event Reporting.
-     *  mode = 3 - Forward unsolicited result codes directly to the TE;
-     *             There is no inband technique used to embed result codes
-     *             and data when TA is in on-line data mode.
-     */
-    at_send_command("AT+CMER=3,0,0,1");
-
     /* Delete Internet Account Configuration.
      *  Some FW versions has an issue, whereby internet account configuration
      *  needs to be cleared explicitly.
      */
     at_send_command("AT*EIAD=0,0");
+
+    /* Make sure currect screenstate is set */
+    getScreenStateLock();
+    screenState = getScreenState();
+    setScreenState(screenState);
+    releaseScreenStateLock();
+
 }
 
 static const char *radioStateToString(RIL_RadioState radioState)

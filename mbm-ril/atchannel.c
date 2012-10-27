@@ -875,8 +875,11 @@ void at_close(void)
     if (ac->fd >= 0) {
         if (close(ac->fd) != 0)
             ALOGE("%s() FAILED to close fd %d!", __func__, ac->fd);
+        ac->fd = -1;
+    } else {
+        ALOGW("%s() Already closed!", __func__);
+        return;
     }
-    ac->fd = -1;
 
     pthread_mutex_lock(&ac->commandmutex);
 

@@ -1,8 +1,8 @@
 diff --git a/rootdir/init.rc b/rootdir/init.rc
-index 5c4e3ee..b4aa7b5 100644
+index efff072..fc692ec 100644
 --- a/rootdir/init.rc
 +++ b/rootdir/init.rc
-@@ -320,15 +320,16 @@ on boot
+@@ -310,15 +310,16 @@ on boot
  #   ReadMin, ReadInitial, ReadMax, WriteMin, WriteInitial, WriteMax,
      setprop net.tcp.buffersize.default 4096,87380,110208,4096,16384,110208
      setprop net.tcp.buffersize.wifi    524288,1048576,2097152,262144,524288,1048576
@@ -21,8 +21,8 @@ index 5c4e3ee..b4aa7b5 100644
      setprop net.tcp.buffersize.evdo    4094,87380,262144,4096,16384,262144
 +    setprop net.tcp.buffersize.evdo_b  4094,87380,262144,4096,16384,262144
  
- # allow system to modify ksm control files
-     chown root system /sys/kernel/mm/ksm/pages_to_scan
+ # Set this property so surfaceflinger is not started by system_init
+     setprop system_init.startsurfaceflinger 0
 diff --git a/toolbox/dmesg.c b/toolbox/dmesg.c
 index 9c73b00..636c7b0 100644
 --- a/toolbox/dmesg.c

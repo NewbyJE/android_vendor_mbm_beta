@@ -269,11 +269,6 @@ int getScreenState(void)
     return s_screenState;
 }
 
-void setScreenState(bool screenIsOn)
-{
-    s_screenState = screenIsOn;
-}
-
 void releaseScreenStateLock(void)
 {
     int err;
@@ -284,41 +279,49 @@ void releaseScreenStateLock(void)
 
 }
 
+void setScreenState(int screenState)
+{
+    if (screenState == 1) {
+        /* Screen is on - be sure to enable all unsolicited notifications again. */
+        at_send_command("AT+CREG=2");
+        at_send_command("AT+CGREG=2");
+        at_send_command("AT+CGEREP=1,0");
+
+        isSimSmsStorageFull(NULL);
+        pollSignalStrength((void *)-1);
+
+        at_send_command("AT+CMER=3,0,0,1");
+
+    } else if (screenState == 0) {
+        /* Screen is off - disable all unsolicited notifications. */
+        at_send_command("AT+CREG=0");
+        at_send_command("AT+CGREG=0");
+        at_send_command("AT+CGEREP=0,0");
+        at_send_command("AT+CMER=3,0,0,0");
+    }
+}
+
 static void requestScreenState(void *data, size_t datalen, RIL_Token t)
 {
     (void) datalen;
-    int err, screenState;
 
     getScreenStateLock();
 
     if (datalen < sizeof(int *))
         goto error;
 
-    screenState = s_screenState = ((int *) data)[0];
+    /* No point of enabling unsolicited if radio is off */
+    if (RADIO_STATE_OFF == getRadioState())
+        goto success;
 
-    if (screenState == 1) {
-        /* Screen is on - be sure to enable all unsolicited notifications again. */
-        err = at_send_command("AT+CREG=2");
-        err = at_send_command("AT+CGREG=2");
-        err = at_send_command("AT+CGEREP=1,0");
+    s_screenState = ((int *) data)[0];
 
-        isSimSmsStorageFull(NULL);
-        pollSignalStrength((void *)-1);
-
-        err = at_send_command("AT+CMER=3,0,0,1");
-
-    } else if (screenState == 0) {
-        /* Screen is off - disable all unsolicited notifications. */
-        err = at_send_command("AT+CREG=0");
-        err = at_send_command("AT+CGREG=0");
-        err = at_send_command("AT+CGEREP=0,0");
-        err = at_send_command("AT+CMER=3,0,0,0");
-
-    } else {
-        /* Not a defined value - error. */
+    if (s_screenState < 2)
+        setScreenState(s_screenState);
+    else
         goto error;
-    }
 
+success:
     RIL_onRequestComplete(t, RIL_E_SUCCESS, NULL, 0);
 
 finally:
@@ -429,11 +432,6 @@ static void processRequest(int request, void *data, size_t datalen, RIL_Token t)
             break;
         case RIL_REQUEST_SCREEN_STATE:
             requestScreenState(data, datalen, t);
-            /* Trigger a rehash of network values, just to be sure. */
-            if (((int *)data)[0] == 1)
-                RIL_onUnsolicitedResponse(
-                                   RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED,
-                                   NULL, 0);
             break;
 
         /* Data Call Requests */
@@ -936,6 +934,7 @@ static void onATTimeout(void)
     static int strike = 0;
 
     strike++;
+
     LOGD("%s() AT channel timeout", __func__);
 
      /* Last resort, throw escape on the line, close the channel

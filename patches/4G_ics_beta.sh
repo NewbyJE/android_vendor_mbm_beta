@@ -16,56 +16,70 @@ repo sync -j16
 #
 echo "apply device/hp/tenderloin cherrypicks"
 pushd device/hp/tenderloin
+# Fixed Touchpad magnetometer forcing more reasonable update rate
 git fetch http://review.cyanogenmod.com/CyanogenMod/android_device_hp_tenderloin refs/changes/15/24215/1 && git cherry-pick -n FETCH_HEAD
 git reset HEAD
 popd
 #
 echo "apply frameworks/base cherrypicks"
 pushd frameworks/base
+# telephony: Fix MMS for when operator has different APNs for Data and MMS
 git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick -n FETCH_HEAD
+# SystemUI/res: Move files to proper directory
 git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/26/24826/1 && git cherry-pick -n FETCH_HEAD
 git reset HEAD
 popd
 #
 echo "apply kernel/hp/tenderloin cherrypicks"
 pushd kernel/hp/tenderloin
+# drivers: Update to most recent acm, wdm, ncm, and usbnet drivers
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/16/24816/1 && git cherry-pick -n FETCH_HEAD
+# drivers: Fix part of the hub race condition on TouchPad 2.6.35
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/17/24817/1 && git cherry-pick -n FETCH_HEAD
+# tenderloin4g_android_defconfig: Update for MBM HAL 4.0.0 BETA
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/18/24818/1 && git cherry-pick -n FETCH_HEAD
+# mdmgpio: Change permissions for mdm_poweron
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/19/24819/1 && git cherry-pick -n FETCH_HEAD
+# Fixed Touchpad magnetometer
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/49/24149/2 && git cherry-pick -n FETCH_HEAD
 git reset HEAD
 popd
 #
 echo "apply system/core cherrypick"
 pushd system/core
+# devices: enables cdc-wdmX devices for ICS
 git fetch http://review.cyanogenmod.com/CyanogenMod/android_system_core refs/changes/25/24825/1 && git cherry-pick -n FETCH_HEAD
 git reset HEAD
 popd
 #
 echo "frameworks_base patch"
 cd frameworks/base
+# Additional support for HSPA+ (HSPAP)
 git apply ~/android/system/vendor/mbm/patches/frameworks_base.patch
 cd ~/android/system
 #
 echo "hardware_ril patch"
 cd hardware/ril
+# Ability to enter AT commands to the MBM HAL from the command line using radiooptions
 git apply ~/android/system/vendor/mbm/patches/hardware_ril.patch
 cd ~/android/system
 #
 echo "kernel_hp_tenderloin patch"
 cd kernel/hp/tenderloin
+# Increase size of logger files to assist with debugging
 git apply ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin.patch
 git apply ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin_A6.patch
 cd ~/android/system
 #
 echo "system_core patch"
 cd system/core
+# Proper radio buffer sizes and increased size for dmesg dump
 git apply ~/android/system/vendor/mbm/patches/system_core.patch
 cd ~/android/system
 #
 echo "apply vendor/cm patch"
 cd vendor/cm
+# Non-release builds and increase default boot animation resolution
 git apply ~/android/system/vendor/mbm/patches/vendor_cm.patch
 ./get-prebuilts
 echo "change to custom bootanimation"

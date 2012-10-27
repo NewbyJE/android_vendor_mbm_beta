@@ -27,7 +27,7 @@ Added utilities to assist with debugging:
 ...
 
 ================================================================
-Note:  !!! As of 10/14/2012 this code is still being tested !!!
+Note:  !!! As of 10/27/2012 this code is a pre-release for testing !!!
 ================================================================
 
 ================================================================
@@ -65,7 +65,7 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_system_core refs/changes/25/24825/1 && git cherry-pick FETCH_HEAD
    telephony: Fix MMS for when operator has different APNs for Data and MMS
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick FETCH_HEAD
-         
+
    Optional
    --------
    Fixed Touchpad magnetometer

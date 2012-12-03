@@ -22,7 +22,7 @@ index 83df6f4..9bf0d36 100644
  # allow system to modify ksm control files
      chown root system /sys/kernel/mm/ksm/pages_to_scan
 diff --git a/toolbox/dmesg.c b/toolbox/dmesg.c
-index e57f607..76c8245 100644
+index e57f607..5185fc2 100644
 --- a/toolbox/dmesg.c
 +++ b/toolbox/dmesg.c
 @@ -5,7 +5,7 @@
@@ -30,7 +30,7 @@ index e57f607..76c8245 100644
  #include <string.h>
  
 -#define KLOG_BUF_SHIFT	17	/* CONFIG_LOG_BUF_SHIFT from our kernel */
-+#define KLOG_BUF_SHIFT	19	/* CONFIG_LOG_BUF_SHIFT from our kernel */
++#define KLOG_BUF_SHIFT	20	/* CONFIG_LOG_BUF_SHIFT from our kernel */
  #define KLOG_BUF_LEN	(1 << KLOG_BUF_SHIFT)
  
  int dmesg_main(int argc, char **argv)

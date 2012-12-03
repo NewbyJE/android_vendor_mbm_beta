@@ -1,0 +1,16 @@
+diff --git a/device_tenderloin.mk b/device_tenderloin.mk
+index 1e602d8..13cf7ba 100644
+--- a/device_tenderloin.mk
++++ b/device_tenderloin.mk
+@@ -159,8 +159,9 @@ PRODUCT_PACKAGES += \
+     Mms
+ 
+ PRODUCT_COPY_FILES += \
+-   device/hp/tenderloin/aldtf.sh:system/xbin/aldtf.sh \
+    device/hp/tenderloin/xmesg:system/bin/xmesg \
++   device/hp/tenderloin/pollerr.sh:system/bin/pollerr.sh \
++   device/hp/tenderloin/aldtf.sh:system/xbin/aldtf.sh \
+    device/hp/tenderloin/gps.conf:system/etc/gps.conf \
+    device/hp/tenderloin/apns-conf.xml:system/etc/apns-conf.xml
+ 
+

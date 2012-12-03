@@ -21,6 +21,13 @@ git fetch http://review.cyanogenmod.com/CyanogenMod/android_device_hp_tenderloin
 git reset HEAD
 popd
 #
+echo "apply Trebuchet cherrypicks"
+pushd packages/apps/Trebuchet
+# Trebuchet: Add overlayable config for tablet workspace grid size (Jellybean version already merged into CM10 already)
+git fetch http://review.cyanogenmod.org/CyanogenMod/android_packages_apps_Trebuchet refs/changes/62/20962/2 && git cherry-pick FETCH_HEAD
+git reset HEAD
+popd
+#
 echo "apply frameworks/base cherrypicks"
 pushd frameworks/base
 # telephony: Fix MMS for when operator has different APNs for Data and MMS
@@ -34,8 +41,6 @@ echo "apply kernel/hp/tenderloin cherrypicks"
 pushd kernel/hp/tenderloin
 # drivers: Update to most recent acm, wdm, ncm, and usbnet drivers
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/16/24816/1 && git cherry-pick -n FETCH_HEAD
-# drivers: Fix part of the hub race condition on TouchPad 2.6.35
-git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/17/24817/1 && git cherry-pick -n FETCH_HEAD
 # tenderloin4g_android_defconfig: Update for MBM HAL 4.0.0 BETA
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/18/24818/1 && git cherry-pick -n FETCH_HEAD
 # mdmgpio: Change permissions for mdm_poweron
@@ -51,6 +56,12 @@ pushd system/core
 git fetch http://review.cyanogenmod.com/CyanogenMod/android_system_core refs/changes/25/24825/1 && git cherry-pick -n FETCH_HEAD
 git reset HEAD
 popd
+#
+echo "device_hp_tenderloin patch"
+cd device/hp/tenderloin
+# Pollerr.sh, NITZ switch, Overlay changes
+git apply ~/android/system/vendor/mbm/patches/device_hp_tenderloin.patch
+cd ~/android/system
 #
 echo "frameworks_base patch"
 cd frameworks/base
@@ -71,10 +82,23 @@ git apply ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin.patch
 git apply ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin_A6.patch
 cd ~/android/system
 #
+echo "packages_apps_email patch"
+cd packages/apps/Email
+# Allow email download of compressed files
+git apply ~/android/system/vendor/mbm/patches/packages_apps_Email.patch
+cd ~/android/system
+#
 echo "system_core patch"
 cd system/core
 # Proper radio buffer sizes and increased size for dmesg dump
 git apply ~/android/system/vendor/mbm/patches/system_core.patch
+cd ~/android/system
+#
+echo "vendor_mbm patch"
+cd vendor/mbm
+# NITZ and RSSI plus GPS fixes
+git apply ~/android/system/vendor/mbm/patches/vendor_mbm_gps.patch
+git apply ~/android/system/vendor/mbm/patches/vendor_mbm_ril.patch
 cd ~/android/system
 #
 echo "apply vendor/cm patch"
@@ -95,7 +119,7 @@ echo "clean build and set name"
 make clean
 export CM_BUILDTYPE=MBM_Beta
 export CM_EXTRAVERSION_DATESTAMP=1
-export CM_EXTRAVERSION_TAG="4g_beta0"
+export CM_EXTRAVERSION_TAG="4g_beta1"
 #
 echo "brunch tenderloin"
 ccache --max-size=50G

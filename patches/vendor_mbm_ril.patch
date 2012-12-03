@@ -1,0 +1,370 @@
+diff --git a/mbm-ril/net-utils.c b/mbm-ril/net-utils.c
+index 22f8a60..7d7ecf7 100644
+--- a/mbm-ril/net-utils.c
++++ b/mbm-ril/net-utils.c
+@@ -35,6 +35,9 @@
+ #include <utils/Log.h>
+ #include <cutils/properties.h>
+ 
++#define PATH_PROC_NET_DEV               "/proc/net/dev"
++#define isspace(c) ((c) == ' ')
++
+ static int ifc_ctl_sock = -1;
+ 
+ static const char *ipaddr_to_string(in_addr_t addr)
+@@ -156,3 +159,66 @@ int ifc_configure(const char *ifname,
+ 
+     return 0;
+ }
++
++static char *get_name(char *name, char *p)
++{
++	/* Extract <name> from nul-terminated p where p matches
++	 * <name>: after leading whitespace.
++	 * If match is not made, set name empty and return unchanged p
++	 */
++	char *nameend;
++	char *namestart;
++    char *s = p;
++
++	while (*s == ' ' || (unsigned char)(*s - 9) <= (13 - 9))
++		s++;
++
++	namestart = s;
++	nameend = namestart;
++	while (*nameend && *nameend != ':' && !isspace(*nameend))
++		nameend++;
++	if (*nameend == ':') {
++		if ((nameend - namestart) < IFNAMSIZ) {
++			memcpy(name, namestart, nameend - namestart);
++			name[nameend - namestart] = '\0';
++			p = nameend;
++		} else {
++			/* Interface name too large */
++			name[0] = '\0';
++		}
++	} else {
++		/* trailing ':' not found - return empty */
++		name[0] = '\0';
++	}
++	return p + 1;
++}
++
++int ifc_statistics(const char *ifname, unsigned long long *rx_packets
++                                     , unsigned long long *tx_packets )
++{
++	FILE *fh;
++	char buf[512];
++
++	fh = fopen(PATH_PROC_NET_DEV, "r");
++	if (!fh) {
++		return -1;
++	}
++
++	fgets(buf, sizeof buf, fh);
++	fgets(buf, sizeof buf, fh);
++
++	while (fgets(buf, sizeof buf, fh)) {
++		char *s, name[128];
++
++		s = get_name(name, buf);
++		if (ifname && !strcmp(ifname, name)) {
++		sscanf(s, "%*u%llu%*u%*u%*u%*u%*u%*u%*u%llu",
++			rx_packets,
++			tx_packets);
++			fclose(fh);
++			return 0;
++        }
++	}
++	fclose(fh);
++	return 1;
++}
+diff --git a/mbm-ril/net-utils.h b/mbm-ril/net-utils.h
+index 63d1664..13ddec5 100644
+--- a/mbm-ril/net-utils.h
++++ b/mbm-ril/net-utils.h
+@@ -27,5 +27,6 @@ int ifc_add_host_route(const char *name);
+ int ifc_configure(const char *ifname,
+         in_addr_t address,
+         in_addr_t gateway);
+-
++int ifc_statistics(const char *ifname, unsigned long long *rx_packets
++                                     , unsigned long long *tx_packets );
+ #endif
+diff --git a/mbm-ril/u300-ril-device.c b/mbm-ril/u300-ril-device.c
+index 8629721..0f1dcaa 100644
+--- a/mbm-ril/u300-ril-device.c
++++ b/mbm-ril/u300-ril-device.c
+@@ -346,6 +346,7 @@ void onSIMReady(void *p)
+ {
+     int err = 0;
+     int screenState;
++    char prop[PROPERTY_VALUE_MAX];
+     (void) p;
+ 
+     /* Check if ME is ready to set preferred message storage */
+@@ -386,10 +387,16 @@ void onSIMReady(void *p)
+     /* Subscribe to time zone/NITZ reporting.
+      *
+      */
+-    err = at_send_command("AT*ETZR=3");
+-    if (err != AT_NOERROR) {
+-        LOGD("%s() Degrading nitz to mode 2", __func__);
+-        at_send_command("AT*ETZR=2");
++    property_get("mbm.ril.config.nitz", prop, "yes");
++    if (strstr(prop, "yes")) {
++        err = at_send_command("AT*ETZR=3");
++        if (err != AT_NOERROR) {
++            LOGD("%s() Degrading nitz to mode 2", __func__);
++            at_send_command("AT*ETZR=2");
++        }
++    } else {
++        at_send_command("AT*ETZR=0");
++        LOGW("%s() Network Time Zone (NITZ) disabled!", __func__);
+     }
+ 
+     /* Delete Internet Account Configuration.
+diff --git a/mbm-ril/u300-ril-messaging.c b/mbm-ril/u300-ril-messaging.c
+index 4f2e966..360496e 100644
+--- a/mbm-ril/u300-ril-messaging.c
++++ b/mbm-ril/u300-ril-messaging.c
+@@ -27,6 +27,7 @@
+ #include "at_tok.h"
+ #include "misc.h"
+ #include "u300-ril.h"
++#include "u300-ril-device.h"
+ 
+ #define LOG_TAG "RIL"
+ #include <utils/Log.h>
+@@ -855,6 +856,11 @@ void checkMessageStorageReady(void *p)
+     struct timespec trigger_time;
+     (void) p;
+ 
++    if (RADIO_STATE_SIM_READY != getRadioState()) {
++        LOGE("%s() SIM not ready, aborting!", __func__);
++        return;
++    }
++
+     err = at_send_command_singleline("AT+CPMS?","+CPMS: ", NULL);
+     if (err == AT_NOERROR) {
+         if (setPreferredMessageStorage() == 0) {
+diff --git a/mbm-ril/u300-ril-network.c b/mbm-ril/u300-ril-network.c
+index cb7adba..0705240 100644
+--- a/mbm-ril/u300-ril-network.c
++++ b/mbm-ril/u300-ril-network.c
+@@ -34,6 +34,8 @@
+ #include "u300-ril-sim.h"
+ #include "u300-ril-pdp.h"
+ #include "u300-ril-device.h"
++#include <arpa/inet.h>
++#include "net-utils.h"
+ 
+ #define LOG_TAG "RIL"
+ #include <utils/Log.h>
+@@ -52,6 +54,7 @@ static int s_cgreg_stat = 4, s_cgreg_lac = -1, s_cgreg_cid = -1, s_cgreg_act = -
+ static int s_gsm_rinfo = 0, s_umts_rinfo = 0;
+ static int s_reg_change = 0;
+ static int s_cops_mode = -1;
++static int rssi_queue = 0;
+ 
+ static void pollOperatorSelected(void *params);
+ 
+@@ -139,6 +142,120 @@ enum ERINFO_umts {
+ static int s_cs_status = E2REG_UNKNOWN;
+ static int s_ps_status = E2REG_UNKNOWN;
+ 
++static const struct timespec NORMAL_FAST_DORMANCY_POLL = { 5, 0 };
++static const struct timespec SLOW_FAST_DORMANCY_POLL = { 10, 0 };
++
++static unsigned long long old_rx_packets;
++static unsigned long long old_tx_packets;
++
++static void pollFastDormancy(void *params);
++
++void startPollFastDormancy(void)
++{
++    int err;
++    err = ifc_statistics(ril_iface, &old_rx_packets, &old_tx_packets);
++    if (err == -1)
++        LOGE("%s() Unable to read /proc/net/dev. FD disabled!", __func__);
++    else if (err == 1)
++        LOGE("%s() Interface (%s) not found. FD disabled!", __func__, ril_iface);
++    else {
++        enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
++                                        &NORMAL_FAST_DORMANCY_POLL, NULL);
++        LOGI("%s() Enabled Fast Dormancy!", __func__ );
++    }
++}
++
++/**
++ * Poll interface to see if we are able to enter
++ * Fast Dormancy.
++ */
++static void pollFastDormancy(void *params)
++{
++    (void) params;
++    int err;
++    unsigned long long rx_packets;
++    unsigned long long tx_packets;
++    static int dormant = 0;
++
++    /* First check that we still are connected*/
++    if (getE2napState() != E2NAP_STATE_CONNECTED) {
++        LOGI("%s() Connection Lost. Disabled Fast Dormancy!", __func__ );
++        return;
++    }
++
++    /* Check that we are registered */
++    if ((s_cs_status != E2REG_REGISTERED) && (s_ps_status != E2REG_REGISTERED)) {
++        LOGI("%s() Registration lost (Restricted). Slow Dormancy!", __func__ );
++        enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
++                                        &SLOW_FAST_DORMANCY_POLL, NULL);
++        return;
++    }
++
++    /* Check that we are registered */
++    if (!(s_creg_stat == CGREG_STAT_REG_HOME_NET ||
++        s_creg_stat == CGREG_STAT_ROAMING ||
++        s_cgreg_stat == CGREG_STAT_REG_HOME_NET ||
++        s_cgreg_stat == CGREG_STAT_ROAMING)) {
++        LOGI("%s() Registration lost. Slow Dormancy!", __func__ );
++        enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
++                                        &SLOW_FAST_DORMANCY_POLL, NULL);
++        return;
++    }
++
++    /* Check that we are on UMTS */
++    if (!(s_umts_rinfo)) {
++        LOGI("%s() 2G Network. Slow Dormancy!", __func__ );
++        enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
++                                        &SLOW_FAST_DORMANCY_POLL, NULL);
++        return;
++    }
++
++    err = ifc_statistics(ril_iface, &rx_packets, &tx_packets);
++    if (err == -1) {
++        LOGE("%s() Unable to read /proc/net/dev. FD disabled!", __func__);
++        return;
++    } else if (err == 1) {
++        LOGE("%s() Interface (%s) not found. FD disabled!", __func__, ril_iface);
++        return;
++    }
++
++    if ((old_rx_packets == rx_packets) && (old_rx_packets == rx_packets)) {
++        if (dormant == 0) {
++            LOGI("%s() Data Dormant (RX:%llu TX: %llu) Enter Fast Dormancy!",
++                            __func__, rx_packets, tx_packets );
++            err = at_send_command("AT*EFDORM");
++            if (err != AT_NOERROR) {
++                LOGW("%s() Failed Fast Dormancy. FD disabled!", __func__);
++                return;
++            } else {
++                dormant = 1;
++            }
++        }
++/* else {
++            LOGI("%s() Data Still Dormant (RX:%llu TX: %llu) Fast Dormancy!",
++                            __func__, rx_packets, tx_packets );
++        }
++*/
++    } else {
++        if (dormant == 1) {
++            dormant = 0;
++            LOGI("%s() Data transfer (RX:%llu TX: %llu) Exit Fast Dormancy!",
++                            __func__, rx_packets, tx_packets );
++        }
++/* else {
++            LOGI("%s() Data transfer (RX:%llu TX: %llu)",
++                            __func__, rx_packets, tx_packets );
++        }
++*/
++        old_rx_packets = rx_packets;
++        old_tx_packets = tx_packets;
++    }
++
++    enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
++                                    &NORMAL_FAST_DORMANCY_POLL, NULL);
++
++}
++
+ /**
+  * Poll +COPS? and return a success, or if the loop counter reaches
+  * REPOLL_OPERATOR_SELECTED, return generic failure.
+@@ -690,6 +807,8 @@ void pollSignalStrength(void *arg)
+     RIL_SignalStrength_v6 signalStrength;
+     (void) arg;
+ 
++    rssi_queue = 0;
++
+     if (getSignalStrength(&signalStrength) < 0)
+         LOGE("%s() Polling the signal strength failed", __func__);
+     else
+@@ -700,7 +819,11 @@ void pollSignalStrength(void *arg)
+ void onSignalStrengthChanged(const char *s)
+ {
+     (void) s;
+-    enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSignalStrength, NULL, NULL);
++
++    if (rssi_queue == 0) {
++        rssi_queue++;
++        enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSignalStrength, NULL, NULL);
++    }
+ }
+ 
+ void onRegistrationStatusChanged(const char *s)
+diff --git a/mbm-ril/u300-ril-network.h b/mbm-ril/u300-ril-network.h
+index 58ba80a..63719db 100644
+--- a/mbm-ril/u300-ril-network.h
++++ b/mbm-ril/u300-ril-network.h
+@@ -55,4 +55,6 @@ void Get_GSM_NCIs(RIL_Token t);
+ void Get_WCDMA_NCIs(RIL_Token t);
+ void No_NCIs(RIL_Token t);
+ 
++void startPollFastDormancy(void);
++
+ #endif
+diff --git a/mbm-ril/u300-ril-pdp.c b/mbm-ril/u300-ril-pdp.c
+index 168f5e9..88de2f2 100644
+--- a/mbm-ril/u300-ril-pdp.c
++++ b/mbm-ril/u300-ril-pdp.c
+@@ -37,6 +37,7 @@
+ #include <cutils/properties.h>
+ #include "u300-ril-error.h"
+ #include "u300-ril-pdp.h"
++#include "u300-ril-network.h"
+ 
+ #define LOG_TAG "RIL"
+ #include <utils/Log.h>
+@@ -738,6 +739,8 @@ down:
+     free(gateways);
+     free(dnses);
+ 
++    startPollFastDormancy();
++
+     return;
+ 
+ error:
+diff --git a/mbm-ril/u300-ril.c b/mbm-ril/u300-ril.c
+index 5f5f587..4bb7c7b 100644
+--- a/mbm-ril/u300-ril.c
++++ b/mbm-ril/u300-ril.c
+@@ -310,8 +310,9 @@ static void requestScreenState(void *data, size_t datalen, RIL_Token t)
+     if (datalen < sizeof(int *))
+         goto error;
+ 
+-    /* No point of enabling unsolicited if radio is off */
+-    if (RADIO_STATE_OFF == getRadioState())
++    /* No point of enabling unsolicited if radio is off
++       or SIM is locked */
++    if (RADIO_STATE_SIM_READY != getRadioState())
+         goto success;
+ 
+     s_screenState = ((int *) data)[0];
+@@ -1215,6 +1216,7 @@ static void *queueRunner(void *param)
+            device is being removed from filesystem */
+ 
+         int i = TIMEOUT_DEVICE_REMOVED;
++        sleep(1);
+         while((i--) && (stat(queueArgs->device_path, &sb) == 0)) {
+             LOGD("%s() Waiting for %s to be removed (%d)...", __func__,
+                 queueArgs->device_path, i);

@@ -1,0 +1,13 @@
+diff --git a/emailcommon/src/com/android/emailcommon/utility/AttachmentUtilities.java b/emailcommon/src/com/android/emailcommon/utility/AttachmentUtilities.java
+index e4d119b..ad00f8b 100644
+--- a/emailcommon/src/com/android/emailcommon/utility/AttachmentUtilities.java
++++ b/emailcommon/src/com/android/emailcommon/utility/AttachmentUtilities.java
+@@ -98,7 +98,7 @@ public class AttachmentUtilities {
+         "mst", "pif", "scr", "sct", "shb", "sys", "vb", "vbe",
+         "vbs", "vxd", "wsc", "wsf", "wsh",
+         // File types of common compression/container formats (again, to avoid malware)
+-        "zip", "gz", "z", "tar", "tgz", "bz2",
++        /* "zip", "gz", "z", "tar", "tgz", "bz2", */
+     };
+     /**
+      * Filename extensions of attachments that can be installed.

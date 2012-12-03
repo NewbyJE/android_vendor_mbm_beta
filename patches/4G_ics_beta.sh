@@ -42,7 +42,7 @@ pushd kernel/hp/tenderloin
 # drivers: Update to most recent acm, wdm, ncm, and usbnet drivers
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/16/24816/1 && git cherry-pick -n FETCH_HEAD
 # tenderloin4g_android_defconfig: Update for MBM HAL 4.0.0 BETA
-git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/18/24818/1 && git cherry-pick -n FETCH_HEAD
+git fetch http://review.cyanogenmod.org/CyanogenMod/hp-kernel-tenderloin refs/changes/06/27506/1 && git cherry-pick -n FETCH_HEAD
 # mdmgpio: Change permissions for mdm_poweron
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/19/24819/1 && git cherry-pick -n FETCH_HEAD
 # Fixed Touchpad magnetometer

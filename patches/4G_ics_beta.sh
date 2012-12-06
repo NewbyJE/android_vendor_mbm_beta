@@ -14,17 +14,10 @@ repo forall -c git reset --hard
 echo "repo sync"
 repo sync -j16
 #
-echo "apply device/hp/tenderloin cherrypicks"
-pushd device/hp/tenderloin
-# Fixed Touchpad magnetometer forcing more reasonable update rate
-git fetch http://review.cyanogenmod.com/CyanogenMod/android_device_hp_tenderloin refs/changes/15/24215/1 && git cherry-pick -n FETCH_HEAD
-git reset HEAD
-popd
-#
-echo "apply Trebuchet cherrypicks"
-pushd packages/apps/Trebuchet
-# Trebuchet: Add overlayable config for tablet workspace grid size (Jellybean version already merged into CM10 already)
-git fetch http://review.cyanogenmod.org/CyanogenMod/android_packages_apps_Trebuchet refs/changes/62/20962/2 && git cherry-pick FETCH_HEAD
+echo "apply packages/apps/Camera cherrypicks"
+pushd packages/apps/Camera
+# Camera controls
+git fetch http://review.cyanogenmod.org/CyanogenMod/android_packages_apps_Camera refs/changes/33/25233/3 && git cherry-pick -n FETCH_HEAD
 git reset HEAD
 popd
 #
@@ -34,6 +27,8 @@ pushd frameworks/base
 git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick -n FETCH_HEAD
 # SystemUI/res: Move files to proper directory
 git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/26/24826/1 && git cherry-pick -n FETCH_HEAD
+# Preview rotation
+git fetch http://review.cyanogenmod.org/CyanogenMod/android_frameworks_base refs/changes/57/25957/2 && git cherry-pick -n FETCH_HEAD
 git reset HEAD
 popd
 #
@@ -45,8 +40,6 @@ git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/ch
 git fetch http://review.cyanogenmod.org/CyanogenMod/hp-kernel-tenderloin refs/changes/06/27506/1 && git cherry-pick -n FETCH_HEAD
 # mdmgpio: Change permissions for mdm_poweron
 git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/19/24819/1 && git cherry-pick -n FETCH_HEAD
-# Fixed Touchpad magnetometer
-git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/49/24149/2 && git cherry-pick -n FETCH_HEAD
 git reset HEAD
 popd
 #
@@ -79,6 +72,7 @@ echo "kernel_hp_tenderloin patch"
 cd kernel/hp/tenderloin
 # Increase size of logger files to assist with debugging
 git apply ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin.patch
+# If any A6 alarm settings have changed, set them back to the default.
 git apply ~/android/system/vendor/mbm/patches/kernel_hp_tenderloin_A6.patch
 cd ~/android/system
 #

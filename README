@@ -23,11 +23,14 @@ Added utilities to assist with debugging:
 
   Added aldtf.sh (in /system/xbin): Run from su prompt to create log files in 'sdcard/logs'
   Added xmesg (in system/bin): Creates kernel logs similar to dmesg, but with time stamps
+  Added pollerr.sh (in system/bin): Run in background to capture POLLERR events
+
+Added Camera HAL patches
 
 ...
 
 ================================================================
-Note:  !!! As of 12/02/2012 this code is a pre-release for testing !!!
+Note:  !!! As of 12/04/2012 this code is a pre-release for testing !!!
 ================================================================
 
 ================================================================
@@ -63,17 +66,15 @@ Steps 3 and 4.  You will need to adjust paths for your setup.
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_system_core refs/changes/25/24825/1 && git cherry-pick FETCH_HEAD
    telephony: Fix MMS for when operator has different APNs for Data and MMS
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick FETCH_HEAD
+   Camera controls
+      git fetch http://review.cyanogenmod.org/CyanogenMod/android_packages_apps_Camera refs/changes/33/25233/3 && git cherry-pick FETCH_HEAD
+   Preview rotation
+      git fetch http://review.cyanogenmod.org/CyanogenMod/android_frameworks_base refs/changes/57/25957/2 && git cherry-pick FETCH_HEAD
 
    Optional
    --------
-   Fixed Touchpad magnetometer
-      git fetch http://review.cyanogenmod.com/CyanogenMod/hp-kernel-tenderloin refs/changes/49/24149/2 && git cherry-pick FETCH_HEAD
-   Fixed Touchpad magnetometer forcing more reasonable update rate
-      git fetch http://review.cyanogenmod.com/CyanogenMod/android_device_hp_tenderloin refs/changes/15/24215/1 && git cherry-pick FETCH_HEAD
    SystemUI/res: Move files to proper directory
       git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/26/24826/1 && git cherry-pick FETCH_HEAD
-   Trebuchet: Add overlayable config for tablet workspace grid size (Jellybean version already merged into CM10 already)
-      git fetch http://review.cyanogenmod.org/CyanogenMod/android_packages_apps_Trebuchet refs/changes/62/20962/2 && git cherry-pick FETCH_HEAD
 
 4. Apply the following additional patches from the patches directory in this repo
 

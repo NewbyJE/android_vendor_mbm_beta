@@ -1,30 +1,40 @@
 diff --git a/rootdir/init.rc b/rootdir/init.rc
-index efff072..fc692ec 100644
+index 07fb19b..dee59b2 100644
 --- a/rootdir/init.rc
 +++ b/rootdir/init.rc
-@@ -310,15 +310,16 @@ on boot
+@@ -308,18 +308,19 @@ on boot
+ 
+ # Define TCP buffer sizes for various networks
  #   ReadMin, ReadInitial, ReadMax, WriteMin, WriteInitial, WriteMax,
-     setprop net.tcp.buffersize.default 4096,87380,110208,4096,16384,110208
+-    setprop net.tcp.buffersize.default 4096,87380,704512,4096,16384,110208
++
++    setprop net.tcp.buffersize.default 4096,87380,110208,4096,16384,110208
      setprop net.tcp.buffersize.wifi    524288,1048576,2097152,262144,524288,1048576
--    setprop net.tcp.buffersize.lte     524288,1048576,2097152,262144,524288,1048576
+-    setprop net.tcp.buffersize.lte     4096,87380,1220608,4096,16384,563200
+-    setprop net.tcp.buffersize.umts    4096,87380,563200,4096,16384,110208
+-    setprop net.tcp.buffersize.hspa    4096,87380,704512,4096,16384,110208
+-    setprop net.tcp.buffersize.hsupa   4096,87380,704512,4096,16384,262144
+-    setprop net.tcp.buffersize.hsdpa   4096,87380,704512,4096,16384,262144
+-    setprop net.tcp.buffersize.hspap   4096,87380,1220608,4096,16384,393216
+-    setprop net.tcp.buffersize.edge    4096,26280,35040,4096,16384,35040
+-    setprop net.tcp.buffersize.gprs    4096,8760,11680,4096,8760,11680
+-    setprop net.tcp.buffersize.evdo    4096,87380,563200,4096,16384,262144
+-    setprop net.tcp.buffersize.evdo_b  4096,87380,704512,4096,16384,262144
 +    setprop net.tcp.buffersize.lte     4094,87380,1220608,4096,16384,1220608
-     setprop net.tcp.buffersize.umts    4094,87380,110208,4096,16384,110208
--    setprop net.tcp.buffersize.hspa    4094,87380,262144,4096,16384,262144
--    setprop net.tcp.buffersize.hsupa   4094,87380,262144,4096,16384,262144
--    setprop net.tcp.buffersize.hsdpa   4094,87380,262144,4096,16384,262144
++    setprop net.tcp.buffersize.umts    4094,87380,110208,4096,16384,110208
 +    setprop net.tcp.buffersize.hspa    4094,87380,1220608,4096,16384,1220608
 +    setprop net.tcp.buffersize.hsupa   4094,87380,1220608,4096,16384,1220608
 +    setprop net.tcp.buffersize.hsdpa   4094,87380,1220608,4096,16384,1220608
-     setprop net.tcp.buffersize.hspap   4094,87380,1220608,4096,16384,1220608
-     setprop net.tcp.buffersize.edge    4093,26280,35040,4096,16384,35040
-     setprop net.tcp.buffersize.gprs    4092,8760,11680,4096,8760,11680
-     setprop net.tcp.buffersize.evdo    4094,87380,262144,4096,16384,262144
++    setprop net.tcp.buffersize.hspap   4094,87380,1220608,4096,16384,1220608
++    setprop net.tcp.buffersize.edge    4093,26280,35040,4096,16384,35040
++    setprop net.tcp.buffersize.gprs    4092,8760,11680,4096,8760,11680
++    setprop net.tcp.buffersize.evdo    4094,87380,262144,4096,16384,262144
 +    setprop net.tcp.buffersize.evdo_b  4094,87380,262144,4096,16384,262144
  
  # Set this property so surfaceflinger is not started by system_init
      setprop system_init.startsurfaceflinger 0
 diff --git a/toolbox/dmesg.c b/toolbox/dmesg.c
-index 9c73b00..636c7b0 100644
+index 9c73b00..c08ce76 100644
 --- a/toolbox/dmesg.c
 +++ b/toolbox/dmesg.c
 @@ -5,7 +5,7 @@
@@ -32,7 +42,7 @@ index 9c73b00..636c7b0 100644
  #include <string.h>
  
 -#define FALLBACK_KLOG_BUF_SHIFT	17	/* CONFIG_LOG_BUF_SHIFT from our kernel */
-+#define FALLBACK_KLOG_BUF_SHIFT	19	/* CONFIG_LOG_BUF_SHIFT from our kernel */
++#define FALLBACK_KLOG_BUF_SHIFT	20	/* CONFIG_LOG_BUF_SHIFT from our kernel */
  #define FALLBACK_KLOG_BUF_LEN	(1 << FALLBACK_KLOG_BUF_SHIFT)
  
  int dmesg_main(int argc, char **argv)

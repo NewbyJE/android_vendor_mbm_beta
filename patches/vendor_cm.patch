@@ -1,8 +1,8 @@
 diff --git a/config/common.mk b/config/common.mk
-index 3213927..483f23d 100644
+index 56cd33d..e88b59e 100644
 --- a/config/common.mk
 +++ b/config/common.mk
-@@ -178,31 +178,65 @@ PRODUCT_VERSION_MAINTENANCE = 0-RC0
+@@ -186,31 +186,65 @@ PRODUCT_VERSION_MAINTENANCE = 0
  # Set CM_BUILDTYPE
  ifdef CM_NIGHTLY
      CM_BUILDTYPE := NIGHTLY
@@ -80,7 +80,7 @@ index 3213927..483f23d 100644
  
  PRODUCT_PROPERTY_OVERRIDES += \
 diff --git a/config/common_full_phone.mk b/config/common_full_phone.mk
-index c9db0e9..5548fea 100644
+index 135a23d..05cfef0 100644
 --- a/config/common_full_phone.mk
 +++ b/config/common_full_phone.mk
 @@ -17,5 +17,5 @@ PRODUCT_COPY_FILES += \

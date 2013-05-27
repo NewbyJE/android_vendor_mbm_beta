@@ -505,6 +505,8 @@ void requestNeighboringCellIDs(void *data, size_t datalen, RIL_Token t)
         Get_WCDMA_NCIs(t);
     else
         No_NCIs(t);
+
+    return;
 }
 
 /**
@@ -977,7 +979,8 @@ void onNetworkStatusChanged(const char *s)
 
     /* If registered, poll signal strength for faster update of signal bar */
     if ((s_cs_status == E2REG_REGISTERED) || (s_ps_status == E2REG_REGISTERED)) {
-        enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSignalStrength, (void *)-1, NULL);
+        if (getScreenState())
+            enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSignalStrength, (void *)-1, NULL);
         /* Make sure registration state is updated when screen is off */
         if (!getScreenState())
             RIL_onUnsolicitedResponse(RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED,

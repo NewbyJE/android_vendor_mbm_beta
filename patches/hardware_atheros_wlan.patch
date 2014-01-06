@@ -1,0 +1,98 @@
+diff --git a/ath6kl/wpa_supplicant_8_lib/driver_cmd_nl80211.c b/ath6kl/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+index 8f63ba2..9c92f81 100644
+--- a/ath6kl/wpa_supplicant_8_lib/driver_cmd_nl80211.c
++++ b/ath6kl/wpa_supplicant_8_lib/driver_cmd_nl80211.c
+@@ -212,20 +212,20 @@ int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+ 	android_wifi_priv_cmd priv_cmd;
+ 	int ret = 0;
+ 
+-	if (os_strcasecmp(cmd, "STOP") == 0) {
++	if (os_strncasecmp(cmd, "STOP", 4) == 0) {
+ 		linux_set_iface_flags(drv->global->ioctl_sock, bss->ifname, 0);
+ 		wpa_msg(drv->ctx, MSG_INFO, WPA_EVENT_DRIVER_STATE "STOPPED");
+-	} else if (os_strcasecmp(cmd, "START") == 0) {
++	} else if (os_strncasecmp(cmd, "START", 5) == 0) {
+ 		linux_set_iface_flags(drv->global->ioctl_sock, bss->ifname, 1);
+ 		wpa_msg(drv->ctx, MSG_INFO, WPA_EVENT_DRIVER_STATE "STARTED");
+-	} else if (os_strcasecmp(cmd, "MACADDR") == 0) {
++	} else if (os_strncasecmp(cmd, "MACADDR", 7) == 0) {
+ 		u8 macaddr[ETH_ALEN] = {};
+ 
+ 		ret = linux_get_ifhwaddr(drv->global->ioctl_sock, bss->ifname, macaddr);
+ 		if (!ret)
+ 			ret = os_snprintf(buf, buf_len,
+ 					  "Macaddr = " MACSTR "\n", MAC2STR(macaddr));
+-	} else if (os_strcasecmp(cmd, "RELOAD") == 0) {
++	} else if (os_strncasecmp(cmd, "RELOAD", 6) == 0) {
+ 		wpa_msg(drv->ctx, MSG_INFO, WPA_EVENT_DRIVER_STATE "HANGED");
+ 	} else if (os_strncasecmp(cmd, "POWERMODE ", 10) == 0) {
+ 		int state;
+@@ -246,14 +246,22 @@ int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+ 		} else {
+ 			wpa_driver_send_hang_msg(drv);
+ 		}
+-	} else if(os_strcmp(cmd, "SCAN-ACTIVE") == 0) {
++	} else if(os_strncmp(cmd, "SCAN-ACTIVE", 11) == 0) {
+ 		return 0; /* unsupported function */
+-	} else if(os_strcmp(cmd, "SCAN-PASSIVE") == 0) {
++	} else if(os_strncmp(cmd, "SCAN-PASSIVE", 12) == 0) {
+ 		return 0; /* unsupported function */
+ 	} else if(os_strncmp(cmd, "RXFILTER-ADD ", 13) == 0) {
+ 		return 0; /* Ignore it */
+ 	} else if(os_strncmp(cmd, "RXFILTER-REMOVE ", 16) == 0) {
+ 		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "COUNTRY ", 8) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "SETBAND ", 8) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "BTCOEXSCAN-START", 16) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "BTCOEXSCAN-STOP", 15) == 0) {
++		return 0; /* Ignore it */
+ 	} else if(os_strncmp(cmd, "BTCOEXMODE ", 11) == 0) {
+                 int mode;
+                 if (sscanf(cmd, "%*s %d", &mode)==1) {
+@@ -264,7 +272,7 @@ int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+                          */
+                         switch (mode) {
+                         case 1: /* Disable*/
+-                                break;
++                                /* fall through */
+                         case 0: /* Enable */
+                                 /* fall through */
+                         case 2: /* Sense*/
+@@ -274,21 +282,20 @@ int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+                         }
+                         return 0; /* ignore it */
+                 }
+-
+-	} else if(os_strcmp(cmd, "RXFILTER-START") == 0) {
++	} else if(os_strncmp(cmd, "RXFILTER-START", 14) == 0) {
+ 		// STUB
+ 		return 0;
+-	} else if(os_strcmp(cmd, "RXFILTER-STOP") == 0) {
++	} else if(os_strncmp(cmd, "RXFILTER-STOP", 13) == 0) {
+ 		// STUB
+ 		return 0;
+ 	} else { /* Use private command */
+-		if (os_strcasecmp(cmd, "BGSCAN-START") == 0) {
++		if (os_strncasecmp(cmd, "BGSCAN-START", 12) == 0) {
+ 			ret = wpa_driver_set_backgroundscan_params(priv);
+ 			if (ret < 0) {
+ 				return ret;
+ 			}
+ 			os_memcpy(buf, "PNOFORCE 1", 11);
+-		} else if (os_strcasecmp(cmd, "BGSCAN-STOP") == 0) {
++		} else if (os_strncasecmp(cmd, "BGSCAN-STOP", 11) == 0) {
+ 			os_memcpy(buf, "PNOFORCE 0", 11);
+ 		} else {
+ 			os_memcpy(buf, cmd, strlen(cmd) + 1);
+@@ -303,7 +310,7 @@ int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+ 		ifr.ifr_data = &priv_cmd;
+ 
+ 		if ((ret = ioctl(drv->global->ioctl_sock, SIOCDEVPRIVATE + 1, &ifr)) < 0) {
+-			wpa_printf(MSG_ERROR, "%s: failed to issue private commands\n", __func__);
++			wpa_printf(MSG_ERROR, "%s: failed to issue private commands (CMD=%s)\n", __func__, cmd);
+ 			wpa_driver_send_hang_msg(drv);
+ 		} else {
+ 			drv_errors = 0;

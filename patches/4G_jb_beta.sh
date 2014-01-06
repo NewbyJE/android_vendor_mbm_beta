@@ -18,12 +18,9 @@ echo "repo sync"
 repo sync -j16
 repo status
 #
-echo "delete extra files"
-pushd device/hp/tenderloin
-popd
-pushd kernel/hp/tenderloin/
-popd
-repo status
+echo "copy the most recent HP TP proprietary files"
+rm -r vendor/hp/tenderloin/proprietary/*
+cp -R device/hp/tenderloin/Proprietary/* vendor/hp/tenderloin/proprietary/
 #
 echo "apply external/tinyalsa cherrypicks"
 pushd external/tinyalsa
@@ -45,10 +42,34 @@ cd development
 git apply $TOP/vendor/mbm/patches/development.patch
 cd $TOP
 #
+# echo "device_hp_tenderloin patches"
+# cd device/hp/tenderloin
+# Change to portrait mode.
+# git apply $TOP/vendor/mbm/patches/device_hp_tenderloin_portrait.patch
+# cd $TOP
+#
+echo "hardware_atheros_wlan patch"
+cd hardware/atheros/wlan
+# fix missing commands.
+git apply $TOP/vendor/mbm/patches/hardware_atheros_wlan.patch
+cd $TOP
+#
+echo "hardware_libhardware_legacy patch"
+cd hardware/libhardware_legacy
+# fix wlan0 loading and fw path directory.
+git apply $TOP/vendor/mbm/patches/hardware_libhardware_legacy_jen.patch
+cd $TOP
+#
 echo "system_core patch"
 cd system/core
 # Proper radio buffer sizes and increased size for dmesg dump
 git apply $TOP/vendor/mbm/patches/system_core.patch
+cd $TOP
+#
+echo "system_netd patch"
+cd system/netd
+# Start up wlan0 interface earlier.
+git apply $TOP/vendor/mbm/patches/system_netd.patch
 cd $TOP
 #
 echo "vendor_mbm patch"

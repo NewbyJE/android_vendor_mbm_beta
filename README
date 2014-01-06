@@ -3,7 +3,6 @@ Overview - Jellybean Version
 This MBM HAL is based on the pre-release MBM HAL 4.0.0.0 BETA for CyanogenMod 10 (Android JB): http://sourceforge.net/apps/mediawiki/mbm/index.php?title=MBM
 
 It has been modified specifically for the HP TouchPad 4G which uses the Ericsson f5521gw Mobile Broadband Module (MBM).  The modifications may be applicable to other platforms using Ericsson MBMs and running Android JB.  
-
 ...
 
 Modification Tracking
@@ -27,21 +26,24 @@ Added utilities to assist with debugging:
 ...
 
 ================================================================
-Note:  !! As of 01/23/2013 this code is a testing pre-release !!
+Note:  !! As of 01/062014 this code has been updated to match 
+       the cm-10-MBM_L-20140106-4g_beta4-tenderloin release
+       link is on WebOS Nation Android on 4G TouchPad Forum
 ================================================================
 
 ================================================================
 Build Instructions for HP TouchPad 4G (jellybean branch)
 ----------------------------------------------------------------
 Note: a script is included in vendor/mbm/patches to assist with
-Steps 3 and 4.  You need to set $TOP to your build directory.
+Step 2 through 4.  You need to set $TOP to your build directory.
 ================================================================
 ================================================================
 Acknowledgements:
 ----------------------------------------------------------------
 James Sullins:  Everything, Prebuilds for CM10 audio & video,
-power shutdow, sensors, etc. 
+power shutdow, sensors, updated WiFi drivers, etc. 
 Tomasz Rostanski: Camera HAL, Gyroscope, etc. 
+Hunter X: Testing and code input.  
 MBM HAL Developers:  MBM HAL 4.1.0 Beta
 ================================================================
 
@@ -52,7 +54,9 @@ MBM HAL Developers:  MBM HAL 4.1.0 Beta
     <project name="NewbyJE/hp-kernel-tenderloin" path="kernel/hp/tenderloin" remote="github" revision="ics" />
     <project name="NewbyJE/android_device_hp_tenderloin" path="device/hp/tenderloin" remote="github" revision="jellybean" />
     <project name="NewbyJE/android_vendor_mbm_beta" path="vendor/mbm" remote="github" revision="jellybean" />
+    <project name="NewbyJE/android_packages_apps_Email" path="packages/apps/Email" remote="github" revision="jellybean" />
     <project name="CyanogenMod/android_hardware_atheros_wlan" path="hardware/atheros/wlan" remote="github" revision="jellybean" />
+    <project name="jcsullins/backports-3.10-2" path="external/backports-wireless" remote="github" revision="master"/>
   </manifest>
 
 2. Synchronize your build directory with manifest (repo sync) 
@@ -61,55 +65,51 @@ MBM HAL Developers:  MBM HAL 4.1.0 Beta
 
   cp -R device/hp/tenderloin/Proprietary/* vendor/hp/tenderloin/proprietary/
 
-4. The following modifications are process and should be cherrypicked:  
+4. The following modifications are open and should be cherrypicked:  
 
-  cd $TOP/device/hp/tenderloin:
-    # TouchPad Camera Settings (Tomasz Rostanski)
-    git fetch http://review.cyanogenmod.org/CyanogenMod/android_device_hp_tenderloin refs/changes/93/29493/1 && git cherry-pick -n FETCH_HEAD
-    # Add Gyroscope sensor userspace driver (Tomasz Rostanski)
-    git fetch http://review.cyanogenmod.org/CyanogenMod/android_device_hp_tenderloin refs/changes/38/29838/10 && git cherry-pick -n FETCH_HEAD
+  cd $TOP/external/tinyalsa
+  # WIP: properly support multivalued controls (James Sullins)
+  git fetch http://review.cyanogenmod.org/CyanogenMod/android_external_tinyalsa refs/changes/46/33646/1 && git cherry-pick -n FETCH_HEAD
 
   cd $TOP/frameworks/base
-    # telephony: Fix MMS for when operator has different APNs for Data and MMS (John Newby)
-    git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick -n FETCH_HEAD
-    # add criticalBatteryShutdownLevel; fix plugged/charging status (James Sullins)
-    git fetch http://review.cyanogenmod.org/CyanogenMod/android_frameworks_base refs/changes/89/28689/2 && git cherry-pick -n FETCH_HEAD
-
-  cd $TOP/kernel/hp/tenderloin
-    # Update MPU3050 kernel driver (Tomasz Rostanski)
-    git fetch http://review.cyanogenmod.org/CyanogenMod/hp-kernel-tenderloin refs/changes/33/29733/8 && git cherry-pick -n FETCH_HEAD
+  # telephony: Fix MMS for when operator has different APNs for Data and MMS (John Newby)
+  git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick -n FETCH_HEAD
 
 4. Apply the following additional patches from the patches directory in this repo ($TOP/vendor/mbm/patches)
 
   Required
   --------
   cd $TOP/development
-    # Add package name providing network location support.
-    patch -p1 < $TOP/vendor/mbm/patches/development.patch
+  # Add package name providing network location support.
+  patch -p1 < $TOP/vendor/mbm/patches/development.patch
+
+  cd $TOP/hardware/atheros/wlan
+  # fix missing commands.
+  patch -p1 < $TOP/vendor/mbm/patches/hardware_atheros_wlan.patch
+
+  cd $TOP/hardware/libhardware_legacy
+  # ath6kl driver early loading and fw path directory
+  patch -p1 < $TOP/vendor/mbm/patches/hardware_libhardware_legacy_jen.patch
 
   cd $TOP/system/core
-    # Proper radio buffer sizes and increased size for dmesg dump
-    patch -p1 < $TOP/vendor/mbm/patches/system_core.patch
+  # Proper radio buffer sizes and increased size for dmesg dump
+  patch -p1 < $TOP/vendor/mbm/patches/system_core.patch
+
+  cd $TOP/system/netd
+  # Start up wlan0 interface earlier.
+  patch -p1 < $TOP/vendor/mbm/patches/system_netd.patch
 
   cd $TOP/vendor/mbm
-    # NITZ and RSSI plus GPS fixes and fast dormancy
-    patch -p1 < $TOP/vendor/mbm/patches/vendor_mbm.patch
+  # NITZ and RSSI plus GPS fixes and fast dormancy
+  patch -p1 < $TOP/vendor/mbm/patches/vendor_mbm.patch
 
   Optional
   --------
-  cd $TOP/hardware/ril
-    # Ability to enter AT commands to the MBM HAL from the command line using radiooptions
-    patch -p1 < $TOP/vendor/mbm/patches/hardware_ril.patch
-
-  cd $TOP/kernel/hp/tenderloin
-    # usb_debug_dirty.patch: More debug information for the USB issues, correction in the pehci.c driver, and revised hub race patch
-    patch -p1 < $TOP/vendor/mbm/patches/usb_debug_dirty.patch
-
-  cd $TOP/packages/apps/Email
-    # Allow email download of compressed files
-    patch -p1 < $TOP/vendor/mbm/patches/packages_apps_Email.patch
-
   cd $TOP/vendor/cm
-    # Non-release builds
-    patch -p1 < $TOP/vendor/mbm/patches/vendor_cm.patch
+  # jcsullins patch for non-release builds
+  patch -p1 < $TOP/vendor/mbm/patches/vendor_cm.patch
+
+  cd $TOP/device/hp/tenderloin
+  # Changes required for portrait mode builds.
+  patch -p1 < $TOP/vendor/mbm/patches/device_hp_tenderloin_portrait.patch
 

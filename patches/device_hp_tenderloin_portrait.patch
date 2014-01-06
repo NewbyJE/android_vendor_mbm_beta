@@ -1,0 +1,90 @@
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index 1e8618f..bde4add 100644
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -38,8 +38,8 @@ TARGET_SCORPION_BIONIC_PLDSIZE := 128
+ COMMON_GLOBAL_CFLAGS += -DREFRESH_RATE=59 -DQCOM_HARDWARE -DUSES_AUDIO_LEGACY
+ 
+ # Boot animation
+-TARGET_SCREEN_HEIGHT := 768
+-TARGET_SCREEN_WIDTH := 1024
++TARGET_SCREEN_HEIGHT := 1024
++TARGET_SCREEN_WIDTH := 768
+ 
+ # Wifi related defines
+ BOARD_WPA_SUPPLICANT_DRIVER := NL80211
+diff --git a/libsensors/MPLSensor.cpp b/libsensors/MPLSensor.cpp
+index 0710777..fdbdfdf 100644
+--- a/libsensors/MPLSensor.cpp
++++ b/libsensors/MPLSensor.cpp
+@@ -392,8 +392,8 @@ void MPLSensor::gyroHandler(sensors_event_t* s, uint32_t* pending_mask,
+     float temp[3];
+     ALOGV_IF(EXTRA_VERBOSE, "gyroHandler");
+     res = inv_get_float_array(INV_GYROS, temp);
+-    s->gyro.v[0] = temp[1] * -M_PI / 180.0;
+-    s->gyro.v[1] = temp[0] * M_PI / 180.0;
++    s->gyro.v[0] = temp[0] * M_PI / 180.0;
++    s->gyro.v[1] = temp[1] * M_PI / 180.0;
+     s->gyro.v[2] = temp[2] * M_PI / 180.0;
+     s->gyro.status = mMpuAccuracy;
+     if (res == INV_SUCCESS)
+diff --git a/libsensors/lsm303dlh_acc.cpp b/libsensors/lsm303dlh_acc.cpp
+index 7940035..6d082c3 100644
+--- a/libsensors/lsm303dlh_acc.cpp
++++ b/libsensors/lsm303dlh_acc.cpp
+@@ -144,10 +144,10 @@ void Lsm303dlhGSensor::processEvent(int code, int value)
+ {
+     switch (code) {
+         case EVENT_TYPE_ACCEL_X:
+-            mPendingEvent.acceleration.y = value * CONVERT_A_X;
++            mPendingEvent.acceleration.x = value * CONVERT_A_X;
+             break;
+         case EVENT_TYPE_ACCEL_Y:
+-            mPendingEvent.acceleration.x = value * -CONVERT_A_Y;
++            mPendingEvent.acceleration.y = value * CONVERT_A_Y;
+             break;
+         case EVENT_TYPE_ACCEL_Z:
+             mPendingEvent.acceleration.z = value * CONVERT_A_Z;
+diff --git a/libsensors/lsm303dlh_mag.cpp b/libsensors/lsm303dlh_mag.cpp
+index 9ec5e75..665da70 100644
+--- a/libsensors/lsm303dlh_mag.cpp
++++ b/libsensors/lsm303dlh_mag.cpp
+@@ -144,10 +144,10 @@ void Lsm303dlhMagSensor::processEvent(int code, int value)
+ {
+     switch (code) {
+         case EVENT_TYPE_MAGV_X:
+-            mPendingEvent.magnetic.y = value * CONVERT_M_X;
++            mPendingEvent.magnetic.x = value * CONVERT_M_X;
+             break;
+         case EVENT_TYPE_MAGV_Y:
+-            mPendingEvent.magnetic.x = value * -CONVERT_M_Y;
++            mPendingEvent.magnetic.y = value * CONVERT_M_Y;
+             break;
+         case EVENT_TYPE_MAGV_Z:
+             mPendingEvent.magnetic.z = value * CONVERT_M_Z;
+diff --git a/system.prop b/system.prop
+index 9de9f6e..397a132 100644
+--- a/system.prop
++++ b/system.prop
+@@ -1,7 +1,7 @@
+ #
+ # system.prop for tenderloin
+ #
+-#ro.sf.hwrotation=270
++ro.sf.hwrotation=270
+ 
+ ro.additionalmounts=/mnt/usbdisk
+ 
+diff --git a/touchscreen_drv/ts_srv.c b/touchscreen_drv/ts_srv.c
+index 8282724..8f61ac1 100644
+--- a/touchscreen_drv/ts_srv.c
++++ b/touchscreen_drv/ts_srv.c
+@@ -82,7 +82,7 @@
+ 
+ #define AVG_FILTER 1
+ 
+-#define USERSPACE_270_ROTATE 0
++#define USERSPACE_270_ROTATE 1
+ 
+ #define RECV_BUF_SIZE 1540
+ #define LIFTOFF_TIMEOUT 25000

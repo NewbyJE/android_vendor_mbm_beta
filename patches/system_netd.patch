@@ -1,0 +1,30 @@
+diff --git a/SoftapController.cpp b/SoftapController.cpp
+index 9e50f6e..34acfea 100644
+--- a/SoftapController.cpp
++++ b/SoftapController.cpp
+@@ -122,6 +122,13 @@ int SoftapController::setCommand(char *iface, const char *fname, unsigned buflen
+ int SoftapController::startDriver(char *iface) {
+     int ret;
+ 
++#ifdef HAVE_HOSTAPD
++    ifc_init();
++    ret = ifc_up(iface);
++    ifc_close();
++    usleep(AP_DRIVER_START_DELAY);
++#endif
++
+     if (mSock < 0) {
+         ALOGE("Softap driver start - failed to open socket");
+         return -1;
+@@ -141,11 +148,6 @@ int SoftapController::startDriver(char *iface) {
+         ALOGE("Softap driver start: %d", ret);
+         return ret;
+     }
+-#ifdef HAVE_HOSTAPD
+-    ifc_init();
+-    ret = ifc_up(iface);
+-    ifc_close();
+-#endif
+     usleep(AP_DRIVER_START_DELAY);
+     ALOGD("Softap driver start: %d", ret);
+     return ret;

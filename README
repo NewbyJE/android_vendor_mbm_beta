@@ -120,7 +120,7 @@ Patches
 
   # ath6kl driver early loading and fw path directory
   cd $TOP/hardware/libhardware_legacy
-  patch -p1 < $TOP/vendor/mbm/patches/hardware_libhardware_legacy_jen.patch
+  patch -p1 < $TOP/vendor/mbm/patches/hardware_libhardware_legacy.patch
 
   # Proper radio buffer sizes and increased size for dmesg dump
   cd $TOP/system/core

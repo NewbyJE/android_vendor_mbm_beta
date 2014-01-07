@@ -63,7 +63,7 @@ cd $TOP
 echo "hardware_libhardware_legacy patch"
 cd hardware/libhardware_legacy
 # fix wlan0 loading and fw path directory.
-git apply $TOP/vendor/mbm/patches/hardware_libhardware_legacy_jen.patch
+git apply $TOP/vendor/mbm/patches/hardware_libhardware_legacy.patch
 cd $TOP
 #
 echo "system_core patch"

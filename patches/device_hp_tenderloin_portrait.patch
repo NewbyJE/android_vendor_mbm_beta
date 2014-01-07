@@ -1,5 +1,5 @@
 diff --git a/BoardConfig.mk b/BoardConfig.mk
-index 1e8618f..bde4add 100644
+index c27538e..f05768e 100644
 --- a/BoardConfig.mk
 +++ b/BoardConfig.mk
 @@ -38,8 +38,8 @@ TARGET_SCORPION_BIONIC_PLDSIZE := 128
@@ -12,7 +12,7 @@ index 1e8618f..bde4add 100644
 +TARGET_SCREEN_WIDTH := 768
  
  # Wifi related defines
- BOARD_WPA_SUPPLICANT_DRIVER := NL80211
+ BOARD_WLAN_DEVICE := ath6kl
 diff --git a/libsensors/MPLSensor.cpp b/libsensors/MPLSensor.cpp
 index 0710777..fdbdfdf 100644
 --- a/libsensors/MPLSensor.cpp

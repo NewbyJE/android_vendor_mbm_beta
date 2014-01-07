@@ -1,0 +1,70 @@
+diff --git a/hostapd/android.config b/hostapd/android.config
+index f51a5bf..b92059a 100644
+--- a/hostapd/android.config
++++ b/hostapd/android.config
+@@ -20,7 +20,7 @@
+ #CFLAGS += -I../../madwifi # change to the madwifi source directory
+ 
+ # Driver interface for drivers using the nl80211 kernel interface
+-#CONFIG_DRIVER_NL80211=y
++CONFIG_DRIVER_NL80211=y
+ # driver_nl80211.c requires a rather new libnl (version 1.1) which may not be
+ # shipped with your distribution yet. If that is the case, you need to build
+ # newer libnl version and point the hostapd build to use it.
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index dc87438..3c260ff 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -9162,7 +9162,29 @@ static int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+                 ret = wpa_driver_get_power_save(priv, &state);
+                 if (!ret && (state != -1))
+                         ret = os_snprintf(buf, buf_len, "POWERMODE = %d\n",
+-                                          state);
++                                         state);
++	} else if(os_strncmp(cmd, "SCAN-ACTIVE", 11) == 0) {
++		return 0; /* unsupported function */
++	} else if(os_strncmp(cmd, "SCAN-PASSIVE", 12) == 0) {
++		return 0; /* unsupported function */
++	} else if(os_strncmp(cmd, "RXFILTER-ADD ", 13) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "RXFILTER-REMOVE ", 16) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "RXFILTER-STOP", 13) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "COUNTRY ", 8) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "SETBAND ", 8) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "BTCOEXSCAN-START", 16) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "BTCOEXSCAN-STOP", 15) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "BTCOEXMODE ", 11) == 0) {
++		return 0; /* Ignore it */
++	} else if(os_strncmp(cmd, "SETSUSPENDMODE ", 15) == 0) {
++		return 0; /* Ignore it */
+         } else { /* Use private command */
+                 memset(&ifr, 0, sizeof(ifr));
+                 memset(&priv_cmd, 0, sizeof(priv_cmd));
+@@ -9175,7 +9197,7 @@ static int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
+                 ifr.ifr_data = &priv_cmd;
+ 
+ 	if ((ret = ioctl(drv->global->ioctl_sock, SIOCDEVPRIVATE + 1, &ifr)) < 0) {
+-                        wpa_printf(MSG_DEBUG, "%s: failed to issue private commands\n", __func__);
++			wpa_printf(MSG_ERROR, "%s: failed to issue private commands (CMD=%s)\n", __func__, cmd);
+                 } else {
+                         ret = 0;
+                         if (os_strncasecmp(cmd, "SETBAND", 7) == 0) {
+diff --git a/wpa_supplicant/android.config b/wpa_supplicant/android.config
+index 5aa4fcc..0d5a320 100644
+--- a/wpa_supplicant/android.config
++++ b/wpa_supplicant/android.config
+@@ -86,7 +86,7 @@
+ #CONFIG_DRIVER_WEXT=y
+ 
+ # Driver interface for Linux drivers using the nl80211 kernel interface
+-#CONFIG_DRIVER_NL80211=y
++CONFIG_DRIVER_NL80211=y
+ CONFIG_LIBNL20=y
+ 
+ # Driver interface for FreeBSD net80211 layer (e.g., Atheros driver)

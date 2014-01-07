@@ -48,6 +48,12 @@ cd $TOP
 # git apply $TOP/vendor/mbm/patches/device_hp_tenderloin_portrait.patch
 # cd $TOP
 #
+echo "external_wpa_supplicant_8 patch"
+cd external/wpa_supplicant_8
+# turn on nl80211 driver support and fix missing commands.
+git apply $TOP/vendor/mbm/patches/external_wpa_supplicant_8.patch
+cd $TOP
+#
 echo "hardware_atheros_wlan patch"
 cd hardware/atheros/wlan
 # fix missing commands.
@@ -94,7 +100,7 @@ echo "clean build and set name"
 make clean
 export CM_BUILDTYPE=MBM_L
 export CM_EXTRAVERSION_DATESTAMP=1
-export CM_EXTRAVERSION_TAG="4g_beta4"
+export CM_EXTRAVERSION_TAG="4g_beta5"
 #
 echo "brunch tenderloin"
 ccache --max-size=50G

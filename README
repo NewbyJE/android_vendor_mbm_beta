@@ -5,10 +5,15 @@ This MBM HAL is based on the pre-release MBM HAL 4.0.0.0 BETA for CyanogenMod 10
 It has been modified specifically for the HP TouchPad 4G which uses the Ericsson f5521gw Mobile Broadband Module (MBM).  The modifications may be applicable to other platforms using Ericsson MBMs and running Android JB.  
 ...
 
-Modification Tracking
-================================================================
-Enhanced network reporting and status bar symbols for f5521gw:
+Table of Contents
+  1. Features
+  2. Build Instructions
 
+================================================================
+1. Features (in addition to current CyangenMod builds)
+================================================================
+Cellular radio support for the following standards
+----------------------------------------------------------------
   Standard        Download    Upload     Symbol
   ------------    --------    --------   ------
   GSM/GPRS        0.0856      0.0428      "G"
@@ -18,37 +23,57 @@ Enhanced network reporting and status bar symbols for f5521gw:
   HSDPA+HSUPA     14.4        5.76        "H"
   HSPA Evol       21          5.76        "H+"
 
-Added utilities to assist with debugging:
-
-  Added aldtf.sh (in /system/xbin): Run from su prompt to create log files in 'sdcard/logs'
-  Added xmesg (in system/bin): Creates kernel logs similar to dmesg, but with time stamps
-  Added pollerr.sh (in system/bin): Capturese logs when a POLLERR occurs.  
-...
-
-================================================================
-Note:  !! As of 01/062014 this code has been updated to match 
-       the cm-10-MBM_L-20140106-4g_beta4-tenderloin release
-       link is on WebOS Nation Android on 4G TouchPad Forum
-================================================================
-
-================================================================
-Build Instructions for HP TouchPad 4G (jellybean branch)
+Data usage, tethering, and hotspot support
 ----------------------------------------------------------------
-Note: a script is included in vendor/mbm/patches to assist with
-Step 2 through 4.  You need to set $TOP to your build directory.
-================================================================
-================================================================
-Acknowledgements:
+  Data Usage for mobile and Wi-Fi data
+  Bluetooth tethering
+  Portable Wi-Fi Hotspot
+
+Sensors
 ----------------------------------------------------------------
-James Sullins:  Everything, Prebuilds for CM10 audio & video,
-power shutdow, sensors, updated WiFi drivers, etc. 
-Tomasz Rostanski: Camera HAL, Gyroscope, etc. 
-Hunter X: Testing and code input.  
-MBM HAL Developers:  MBM HAL 4.1.0 Beta
+  Sensors work correctly in portrait mode builds
+  Sensors may not work correctly in landscape mode builds
+   (if the application only works in portrait mode)
+
+Email
+----------------------------------------------------------------
+  Email allows downloading zip and other compressed files
+  Email opens mail full screen in landscape mode
+
+Additional debugging support
+----------------------------------------------------------------
+  Increased Android log buffer sizes
+  aldtf.sh (in /system/xbin): Run from su prompt to create log files in 'sdcard/logs'
+  xmesg (in system/bin): Creates kernel logs similar to dmesg, but with time stamps
+  pollerr.sh (in system/bin): Capturese logs when a POLLERR occurs.  
+
+Acknowledgements
+----------------------------------------------------------------
+  James Sullins:  Everything, Prebuilds for CM10 audio & video,
+    power shutdow, sensors, updated WiFi drivers, etc. 
+  Tomasz Rostanski: Camera HAL, Gyroscope, etc. 
+  Hunter X: Testing and code input.  
+  MBM HAL Developers:  MBM HAL 4.1.0 Beta
+
 ================================================================
+2. Build Instructions
+================================================================
+Current version
+----------------------------------------------------------------
+  These instructions match the current build version:
+    cm-10-MBM_L-20140106-4g_beta5-tenderloin.zip
+  Link to builds created using these instructions are here:
+    WebOS Nation ->
+      Android on webOS Forum ->
+        Android on 4G TouchPad
 
-1. Modify your local_manifest.xml, as follows:
+Script support
+----------------------------------------------------------------
+  A build script (4G_jb_beta.sh) is provided in vendor/mbm/patches
+  You will need to set $TOP to your build directory.
 
+local_manifest.xml
+----------------------------------------------------------------
   <?xml version="1.0" encoding="UTF-8"?>
   <manifest>
     <project name="NewbyJE/hp-kernel-tenderloin" path="kernel/hp/tenderloin" remote="github" revision="ics" />
@@ -59,57 +84,63 @@ MBM HAL Developers:  MBM HAL 4.1.0 Beta
     <project name="jcsullins/backports-3.10-2" path="external/backports-wireless" remote="github" revision="master"/>
   </manifest>
 
-2. Synchronize your build directory with manifest (repo sync) 
+Proprietary Files
+----------------------------------------------------------------
+  Latest HP TP prop files are in device/hp/tenderloin/Proprietary
+  Copy them to vendor/hp/tenderloin/proprietary:
+    cp -R device/hp/tenderloin/Proprietary/* vendor/hp/tenderloin/proprietary/
 
-3. Copy the HP TP proprietary files from device/hp/tenderloin to vendor/hp/tenderloin/
-
-  cp -R device/hp/tenderloin/Proprietary/* vendor/hp/tenderloin/proprietary/
-
-4. The following modifications are open and should be cherrypicked:  
-
-  cd $TOP/external/tinyalsa
+Cherry Picks
+----------------------------------------------------------------
   # WIP: properly support multivalued controls (James Sullins)
+  cd $TOP/external/tinyalsa
   git fetch http://review.cyanogenmod.org/CyanogenMod/android_external_tinyalsa refs/changes/46/33646/1 && git cherry-pick -n FETCH_HEAD
 
-  cd $TOP/frameworks/base
   # telephony: Fix MMS for when operator has different APNs for Data and MMS (John Newby)
+  cd $TOP/frameworks/base
   git fetch http://review.cyanogenmod.com/CyanogenMod/android_frameworks_base refs/changes/83/24883/1 && git cherry-pick -n FETCH_HEAD
 
-4. Apply the following additional patches from the patches directory in this repo ($TOP/vendor/mbm/patches)
+Patches
+----------------------------------------------------------------
+  Located in vendor/mbm/patches
 
-  Required
-  --------
-  cd $TOP/development
+  Recommended
+  *************************************
   # Add package name providing network location support.
+  cd $TOP/development
   patch -p1 < $TOP/vendor/mbm/patches/development.patch
 
-  cd $TOP/hardware/atheros/wlan
+  # turn on nl80211 driver support and fix missing commands.
+  cd $TOP/external/wpa_supplicant_8
+  patch -p1 < $TOP/vendor/mbm/patches/external_wpa_supplicant_8.patch
+
   # fix missing commands.
+  cd $TOP/hardware/atheros/wlan
   patch -p1 < $TOP/vendor/mbm/patches/hardware_atheros_wlan.patch
 
-  cd $TOP/hardware/libhardware_legacy
   # ath6kl driver early loading and fw path directory
+  cd $TOP/hardware/libhardware_legacy
   patch -p1 < $TOP/vendor/mbm/patches/hardware_libhardware_legacy_jen.patch
 
-  cd $TOP/system/core
   # Proper radio buffer sizes and increased size for dmesg dump
+  cd $TOP/system/core
   patch -p1 < $TOP/vendor/mbm/patches/system_core.patch
 
-  cd $TOP/system/netd
   # Start up wlan0 interface earlier.
+  cd $TOP/system/netd
   patch -p1 < $TOP/vendor/mbm/patches/system_netd.patch
 
-  cd $TOP/vendor/mbm
   # NITZ and RSSI plus GPS fixes and fast dormancy
+  cd $TOP/vendor/mbm
   patch -p1 < $TOP/vendor/mbm/patches/vendor_mbm.patch
 
   Optional
-  --------
-  cd $TOP/vendor/cm
+  *************************************
   # jcsullins patch for non-release builds
+  cd $TOP/vendor/cm
   patch -p1 < $TOP/vendor/mbm/patches/vendor_cm.patch
 
-  cd $TOP/device/hp/tenderloin
   # Changes required for portrait mode builds.
+  cd $TOP/device/hp/tenderloin
   patch -p1 < $TOP/vendor/mbm/patches/device_hp_tenderloin_portrait.patch
 

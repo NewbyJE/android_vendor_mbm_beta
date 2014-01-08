@@ -80,7 +80,6 @@ static void* onGpsStatusChange (void *s)
     char *line = (char *) s;
 
     ENTER;
-
     err = at_tok_start(&line);
     if (err < 0) {
         MBMLOGE("%s error parsing data", __FUNCTION__);
@@ -109,7 +108,6 @@ static void* onGpsStatusChange (void *s)
         MBMLOGE("%s error parsing data", __FUNCTION__);
         return NULL;
     }
-
     if (supl_status != 0) {
         MBMLOGW("%s, supl failed. Fallback required.", __FUNCTION__);
         if (context->supl_fail_callback)
@@ -139,7 +137,7 @@ static void *unsolicitedHandler(void *data)
     GpsCtrlContext *context = get_gpsctrl_context();
 
     ENTER;
-
+    ALOGI("unsolictedhandler enter");
     queued_event *event = (queued_event *)data;
     if (NULL == event)
         MBMLOGE("%s: event = NULL", __FUNCTION__);
@@ -150,6 +148,8 @@ static void *unsolicitedHandler(void *data)
         free(event->data);
         free(event);
     }
+
+    ALOGI("unsolictedhandler exit");
 
     EXIT;
     return NULL;
@@ -166,7 +166,6 @@ static void onUnsolicited(const char *s, const char *sms_pdu)
     (void) sms_pdu;
 
     ENTER;
-
     /* enqueue events for any function calls that will send at commands */
 
     if (strStartsWith(s, "*E2GPSSUPLNI:"))
@@ -198,7 +197,6 @@ static void onUnsolicited(const char *s, const char *sms_pdu)
             gpsctrl_event = onGpsStatusChange;
             str = s;
         }
-
         if (gpsctrl_event && str) {
             event = malloc(sizeof(queued_event));
             if (!event) {
@@ -206,7 +204,6 @@ static void onUnsolicited(const char *s, const char *sms_pdu)
                 EXIT;
                 return;
             }
-
             event->handler = gpsctrl_event;
             err = asprintf(&event->data, "%s", str);
             if (err < 0) {
@@ -215,6 +212,7 @@ static void onUnsolicited(const char *s, const char *sms_pdu)
                 EXIT;
                 return;
             }
+            ALOGI("enqueue_event");
             enqueue_event(unsolicitedHandler, (void *)event);
         }
     }
@@ -256,9 +254,9 @@ void enqueue_event (gpsctrl_queued_event queued_event, void *data)
     int ret;
 
     ENTER;
-
     pthread_t event_thread;
 
+    ALOGI("pthread_create queued_event");
     ret = pthread_create(&event_thread, NULL, queued_event, data);
     if (ret < 0)
         MBMLOGE("%s error creating event thread", __FUNCTION__);
@@ -273,19 +271,16 @@ int gpsctrl_set_devices (char *at_dev, char* nmea_dev)
     int ret;
 
     ENTER;
-
     ret = asprintf(&context->at_dev, "%s", at_dev);
     if (ret < 0) {
         EXIT;
         return -1;
     }
-
     ret = asprintf(&context->nmea_dev, "%s", nmea_dev);
     if (ret < 0) {
         EXIT;
         return -1;
     }
-
     MBMLOGI("%s, control device: %s, nmea device: %s", __FUNCTION__, context->at_dev, context->nmea_dev);
 
     EXIT;
@@ -306,9 +301,7 @@ int gpsctrl_init(int loglevel)
         ALOGE("initializeGpsCtrlContext() failed!");
         return -1;
     }
-
     supl_init_context();
-
     return 0;
 }
 
@@ -321,10 +314,8 @@ int gpsctrl_open (int at_fd, void (*onClose)(void))
     GpsCtrlContext *context = get_gpsctrl_context();
 
     ENTER;
-
     context->pref_mode = MODE_STAND_ALONE;
     context->interval = 2;
-
     context->at_fd = at_fd;
 
     /* initialize at channel thread */
@@ -334,16 +325,13 @@ int gpsctrl_open (int at_fd, void (*onClose)(void))
         EXIT;
         return -1;
     }
-
     at_set_on_reader_closed(onClose);
     at_set_on_timeout(onATTimeout);
-
     if (at_handshake() < 0) {
         MBMLOGE("%s, at handshake failed", __FUNCTION__);
         EXIT;
         return -1;
     }
-
     err = at_send_command("AT");
     if (err < 0) {
         MBMLOGE("%s, error sending AT", __FUNCTION__);
@@ -358,7 +346,6 @@ int gpsctrl_open (int at_fd, void (*onClose)(void))
         EXIT;
         return -1;
     }
-
     at_make_default_channel();
     at_set_timeout_msec(1000 * 180);
 
@@ -380,7 +367,6 @@ void gpsctrl_set_position_mode (int mode, int recurrence)
     GpsCtrlContext *context = get_gpsctrl_context();
 
     ENTER;
-
     context->pref_mode = mode;
 
     if (context->pref_mode == MODE_SUPL && recurrence == 1) {
@@ -388,6 +374,7 @@ void gpsctrl_set_position_mode (int mode, int recurrence)
         context->interval = 2;
     } else
         context->interval = recurrence;
+    MBMLOGI("New GPS mode: %d Interval: %d", context->pref_mode, context->interval);
 
     EXIT;
 }
@@ -399,15 +386,12 @@ int gpsctrl_delete_aiding_data(int clear_flag)
     int err;
 
     ENTER;
-
     if (!gpsctrl_get_device_is_ready()) {
         MBMLOGW("%s, device not ready. Not clearing data.", __FUNCTION__);
         return -1;
     }
-
     MBMLOGI("%s, force sleep for 10 seconds for gps to settle", __FUNCTION__);
     sleep(10);
-
     if (clear_flag == CLEAR_AIDING_DATA_ALL)
         err = at_send_command("AT*E2GPSCLM=0");
     else
@@ -416,7 +400,6 @@ int gpsctrl_delete_aiding_data(int clear_flag)
         EXIT;
         return -1;
     }
-
     if (clear_flag == CLEAR_AIDING_DATA_ALL)
         err = at_send_command("AT*EEGPSEECLM=0");
     else
@@ -425,7 +408,6 @@ int gpsctrl_delete_aiding_data(int clear_flag)
         EXIT;
         return -1;
     }
-
     EXIT;
     return 0;
 }
@@ -434,7 +416,6 @@ int gpsctrl_delete_aiding_data(int clear_flag)
 int gpsctrl_get_nmea_fd(void)
 {
     GpsCtrlContext *context = get_gpsctrl_context();
-
     return context->nmea_fd;
 }
 
@@ -442,10 +423,8 @@ int gpsctrl_get_nmea_fd(void)
 int gpsctrl_init_supl (int allow_uncert, int enable_ni)
 {
     GpsCtrlContext *context = get_gpsctrl_context();
-
     context->supl_config.allow_uncert = allow_uncert;
     context->supl_config.enable_ni = enable_ni;
-
     return supl_init();
 }
 
@@ -456,7 +435,6 @@ int gpsctrl_init_pgps(void)
 
     ENTER;
     EXIT;
-
     return 0;
 }
 
@@ -468,10 +446,8 @@ int gpsctrl_set_supl_server (char *server)
     int ret;
 
     ENTER;
-
     free(context->supl_config.supl_server);
     context->supl_config.supl_server = NULL;
-
     ret = asprintf(&context->supl_config.supl_server,
                    "%s", server);
     if (ret < 0) {
@@ -479,7 +455,6 @@ int gpsctrl_set_supl_server (char *server)
         EXIT;
         return -1;
     }
-
     if (gpsctrl_get_device_is_ready()) {
         EXIT;
         return supl_set_server();
@@ -496,47 +471,38 @@ int gpsctrl_set_apn_info (char *apn, char *user, char *password, char* authtype)
     int ret;
 
     ENTER;
-
     free(context->supl_config.apn);
     context->supl_config.apn = NULL;
-
     free(context->supl_config.username);
     context->supl_config.username = NULL;
-
     free(context->supl_config.password);
     context->supl_config.password = NULL;
-
     free(context->supl_config.authtype);
     context->supl_config.authtype = NULL;
-
     ret = asprintf(&context->supl_config.apn,
                    "%s", apn);
     if (ret < 0) {
         EXIT;
         return -1;
     }
-
     ret = asprintf(&context->supl_config.username,
                    "%s", user);
     if (ret < 0) {
         EXIT;
         return -1;
     }
-
     ret = asprintf(&context->supl_config.password,
                    "%s", password);
     if (ret < 0) {
         EXIT;
         return -1;
     }
-
     ret = asprintf(&context->supl_config.authtype,
                    "%s", authtype);
     if (ret < 0) {
         EXIT;
         return -1;
     }
-
     if (context->supl_initialized && gpsctrl_get_device_is_ready()) {
         EXIT;
         return supl_set_apn_info();
@@ -553,6 +519,7 @@ void gpsctrl_set_supl_fail_callback (gpsctrl_supl_fail_callback supl_fail_callba
 
     ENTER;
     context->supl_fail_callback = supl_fail_callback;
+
     EXIT;
 }
 
@@ -563,6 +530,7 @@ void gpsctrl_set_supl_ni_callback (gpsctrl_supl_ni_callback supl_ni_callback)
 
     ENTER;
     context->supl_ni_callback = supl_ni_callback;
+
     EXIT;
 }
 
@@ -572,7 +540,6 @@ int gpsctrl_supl_ni_reply (GpsCtrlSuplNiRequest *supl_ni_request, int allow)
     GpsCtrlContext *context = get_gpsctrl_context();
     ENTER;
     EXIT;
-
     return supl_send_ni_reply(supl_ni_request->message_id, allow);
 }
 
@@ -584,7 +551,6 @@ int gpsctrl_start(void)
     GpsCtrlContext *context = get_gpsctrl_context();
 
     ENTER;
-
     if (context->fallback) {
         mode = MODE_STAND_ALONE;
         context->fallback = 0;
@@ -601,22 +567,19 @@ int gpsctrl_start(void)
             mode = context->pref_mode;
         }
     }
-
     if (nmea_activate_port(context->nmea_fd) < 0) {
         MBMLOGE("%s, activate port failed", __FUNCTION__);
         return -1;
     }
-
     if (mode == MODE_SUPL) {
         err = at_send_command("AT*E2GPSSTAT=1");
         if (err < 0)
             return -1;
     }
-
     err = at_send_command("AT*E2GPSCTL=%d,%d", mode, context->interval);
     if (err < 0)
         return -1;
-
+    MBMLOGI("GPS Started in mode: %d", mode);
     return 0;
 }
 
@@ -627,8 +590,8 @@ int gpsctrl_start_fallback(void)
 
     ENTER;
     context->fallback = 1;
-    EXIT;
 
+    EXIT;
     return gpsctrl_start();
 }
 
@@ -639,15 +602,12 @@ int gpsctrl_stop(void)
     int err;
 
     ENTER;
-
     /* it's important that this is run before
      * e2gpsctl. Otherwise we can run into a
      * loop in onGpsStatusChange
      */
     err = at_send_command("AT*E2GPSSTAT=0");
-
     err = at_send_command("AT*E2GPSCTL=0");
-
     if (err < 0) {
         EXIT;
         return -1;
@@ -659,11 +619,8 @@ int gpsctrl_stop(void)
 
 static void close_devices(void)
 {
-
-    at_reader_close();
-
     nmea_close();
-
+    at_reader_close();
 }
 
 /* close at and nmea ports and kick off a cleanup */
@@ -672,11 +629,9 @@ int gpsctrl_cleanup(void)
     GpsCtrlContext *context = get_gpsctrl_context();
 
     ENTER;
-
     close_devices();
 
     EXIT;
-
     return 0;
 }
 
@@ -710,11 +665,11 @@ void gpsctrl_set_is_connected (int connected)
     GpsCtrlContext *context = get_gpsctrl_context();
 
     ENTER;
-
     if (context->pref_mode == MODE_PGPS) {
-        if (gpsctrl_get_device_is_ready())
+        if (gpsctrl_get_device_is_ready()) {
+            MBMLOGI("Setting eedata state to: %d", connected);
             pgps_set_eedata(connected);
-        else
+        } else
             MBMLOGW("Not setting eedata since the device is not ready.");
     } else
         MBMLOGI("Not setting eedata since preferred mode is not PGPS");
@@ -724,7 +679,6 @@ void gpsctrl_set_is_connected (int connected)
 void gpsctrl_set_device_is_ready (int ready) {
 
     GpsCtrlContext *context = get_gpsctrl_context();
-
     MBMLOGV("%s, is ready: %d", __FUNCTION__, ready);
     context->is_ready = ready;
 

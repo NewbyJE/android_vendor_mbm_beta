@@ -346,6 +346,7 @@ void onSIMReady(void *p)
 {
     int err = 0;
     int screenState;
+    char prop[PROPERTY_VALUE_MAX];
     (void) p;
 
     /* Check if ME is ready to set preferred message storage */
@@ -386,10 +387,16 @@ void onSIMReady(void *p)
     /* Subscribe to time zone/NITZ reporting.
      *
      */
-    err = at_send_command("AT*ETZR=3");
-    if (err != AT_NOERROR) {
-        ALOGD("%s() Degrading nitz to mode 2", __func__);
-        at_send_command("AT*ETZR=2");
+    property_get("mbm.ril.config.nitz", prop, "yes");
+    if (strstr(prop, "yes")) {
+        err = at_send_command("AT*ETZR=3");
+        if (err != AT_NOERROR) {
+            ALOGD("%s() Degrading nitz to mode 2", __func__);
+            at_send_command("AT*ETZR=2");
+        }
+    } else {
+        at_send_command("AT*ETZR=0");
+        ALOGW("%s() Network Time Zone (NITZ) disabled!", __func__);
     }
 
     /* Delete Internet Account Configuration.

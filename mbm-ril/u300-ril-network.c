@@ -34,6 +34,8 @@
 #include "u300-ril-sim.h"
 #include "u300-ril-pdp.h"
 #include "u300-ril-device.h"
+#include <arpa/inet.h>
+#include "net-utils.h"
 
 #define LOG_TAG "RIL"
 #include <utils/Log.h>
@@ -52,6 +54,7 @@ static int s_cgreg_stat = 4, s_cgreg_lac = -1, s_cgreg_cid = -1, s_cgreg_act = -
 static int s_gsm_rinfo = 0, s_umts_rinfo = 0;
 static int s_reg_change = 0;
 static int s_cops_mode = -1;
+static int rssi_queue = 0;
 
 static void pollOperatorSelected(void *params);
 
@@ -138,6 +141,120 @@ enum ERINFO_umts {
 
 static int s_cs_status = E2REG_UNKNOWN;
 static int s_ps_status = E2REG_UNKNOWN;
+
+static const struct timespec NORMAL_FAST_DORMANCY_POLL = { 5, 0 };
+static const struct timespec SLOW_FAST_DORMANCY_POLL = { 10, 0 };
+
+static unsigned long long old_rx_packets;
+static unsigned long long old_tx_packets;
+
+static void pollFastDormancy(void *params);
+
+void startPollFastDormancy(void)
+{
+    int err;
+    err = ifc_statistics(ril_iface, &old_rx_packets, &old_tx_packets);
+    if (err == -1)
+        ALOGE("%s() Unable to read /proc/net/dev. FD disabled!", __func__);
+    else if (err == 1)
+        ALOGE("%s() Interface (%s) not found. FD disabled!", __func__, ril_iface);
+    else {
+        enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
+                                        &NORMAL_FAST_DORMANCY_POLL, NULL);
+        ALOGI("%s() Enabled Fast Dormancy!", __func__ );
+    }
+}
+
+/**
+ * Poll interface to see if we are able to enter
+ * Fast Dormancy.
+ */
+static void pollFastDormancy(void *params)
+{
+    (void) params;
+    int err;
+    unsigned long long rx_packets;
+    unsigned long long tx_packets;
+    static int dormant = 0;
+
+    /* First check that we still are connected*/
+    if (getE2napState() != E2NAP_STATE_CONNECTED) {
+        ALOGI("%s() Connection Lost. Disabled Fast Dormancy!", __func__ );
+        return;
+    }
+
+    /* Check that we are registered */
+    if ((s_cs_status != E2REG_REGISTERED) && (s_ps_status != E2REG_REGISTERED)) {
+        ALOGI("%s() Registration lost (Restricted). Slow Dormancy!", __func__ );
+        enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
+                                        &SLOW_FAST_DORMANCY_POLL, NULL);
+        return;
+    }
+
+    /* Check that we are registered */
+    if (!(s_creg_stat == CGREG_STAT_REG_HOME_NET ||
+        s_creg_stat == CGREG_STAT_ROAMING ||
+        s_cgreg_stat == CGREG_STAT_REG_HOME_NET ||
+        s_cgreg_stat == CGREG_STAT_ROAMING)) {
+        ALOGI("%s() Registration lost. Slow Dormancy!", __func__ );
+        enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
+                                        &SLOW_FAST_DORMANCY_POLL, NULL);
+        return;
+    }
+
+    /* Check that we are on UMTS */
+    if (!(s_umts_rinfo)) {
+        ALOGI("%s() 2G Network. Slow Dormancy!", __func__ );
+        enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
+                                        &SLOW_FAST_DORMANCY_POLL, NULL);
+        return;
+    }
+
+    err = ifc_statistics(ril_iface, &rx_packets, &tx_packets);
+    if (err == -1) {
+        ALOGE("%s() Unable to read /proc/net/dev. FD disabled!", __func__);
+        return;
+    } else if (err == 1) {
+        ALOGE("%s() Interface (%s) not found. FD disabled!", __func__, ril_iface);
+        return;
+    }
+
+    if ((old_rx_packets == rx_packets) && (old_rx_packets == rx_packets)) {
+        if (dormant == 0) {
+            ALOGI("%s() Data Dormant (RX:%llu TX: %llu) Enter Fast Dormancy!",
+                            __func__, rx_packets, tx_packets );
+            err = at_send_command("AT*EFDORM");
+            if (err != AT_NOERROR) {
+                ALOGW("%s() Failed Fast Dormancy. FD disabled!", __func__);
+                return;
+            } else {
+                dormant = 1;
+            }
+        }
+/* else {
+            ALOGI("%s() Data Still Dormant (RX:%llu TX: %llu) Fast Dormancy!",
+                            __func__, rx_packets, tx_packets );
+        }
+*/
+    } else {
+        if (dormant == 1) {
+            dormant = 0;
+            ALOGI("%s() Data transfer (RX:%llu TX: %llu) Exit Fast Dormancy!",
+                            __func__, rx_packets, tx_packets );
+        }
+/* else {
+            ALOGI("%s() Data transfer (RX:%llu TX: %llu)",
+                            __func__, rx_packets, tx_packets );
+        }
+*/
+        old_rx_packets = rx_packets;
+        old_tx_packets = tx_packets;
+    }
+
+    enqueueRILEventName(RIL_EVENT_QUEUE_NORMAL, pollFastDormancy, NULL,
+                                    &NORMAL_FAST_DORMANCY_POLL, NULL);
+
+}
 
 /**
  * Poll +COPS? and return a success, or if the loop counter reaches
@@ -692,6 +809,8 @@ void pollSignalStrength(void *arg)
     RIL_SignalStrength_v6 signalStrength;
     (void) arg;
 
+    rssi_queue = 0;
+
     if (getSignalStrength(&signalStrength) < 0)
         ALOGE("%s() Polling the signal strength failed", __func__);
     else
@@ -702,7 +821,11 @@ void pollSignalStrength(void *arg)
 void onSignalStrengthChanged(const char *s)
 {
     (void) s;
-    enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSignalStrength, NULL, NULL);
+
+    if (rssi_queue == 0) {
+        rssi_queue++;
+        enqueueRILEvent(RIL_EVENT_QUEUE_PRIO, pollSignalStrength, NULL, NULL);
+    }
 }
 
 void onRegistrationStatusChanged(const char *s)

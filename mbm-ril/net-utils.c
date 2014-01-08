@@ -35,6 +35,9 @@
 #include <utils/Log.h>
 #include <cutils/properties.h>
 
+#define PATH_PROC_NET_DEV               "/proc/net/dev"
+#define isspace(c) ((c) == ' ')
+
 static int ifc_ctl_sock = -1;
 
 static const char *ipaddr_to_string(in_addr_t addr)
@@ -155,4 +158,67 @@ int ifc_configure(const char *ifname,
     ifc_close();
 
     return 0;
+}
+
+static char *get_name(char *name, char *p)
+{
+	/* Extract <name> from nul-terminated p where p matches
+	 * <name>: after leading whitespace.
+	 * If match is not made, set name empty and return unchanged p
+	 */
+	char *nameend;
+	char *namestart;
+    char *s = p;
+
+	while (*s == ' ' || (unsigned char)(*s - 9) <= (13 - 9))
+		s++;
+
+	namestart = s;
+	nameend = namestart;
+	while (*nameend && *nameend != ':' && !isspace(*nameend))
+		nameend++;
+	if (*nameend == ':') {
+		if ((nameend - namestart) < IFNAMSIZ) {
+			memcpy(name, namestart, nameend - namestart);
+			name[nameend - namestart] = '\0';
+			p = nameend;
+		} else {
+			/* Interface name too large */
+			name[0] = '\0';
+		}
+	} else {
+		/* trailing ':' not found - return empty */
+		name[0] = '\0';
+	}
+	return p + 1;
+}
+
+int ifc_statistics(const char *ifname, unsigned long long *rx_packets
+                                     , unsigned long long *tx_packets )
+{
+	FILE *fh;
+	char buf[512];
+
+	fh = fopen(PATH_PROC_NET_DEV, "r");
+	if (!fh) {
+		return -1;
+	}
+
+	fgets(buf, sizeof buf, fh);
+	fgets(buf, sizeof buf, fh);
+
+	while (fgets(buf, sizeof buf, fh)) {
+		char *s, name[128];
+
+		s = get_name(name, buf);
+		if (ifname && !strcmp(ifname, name)) {
+		sscanf(s, "%*u%llu%*u%*u%*u%*u%*u%*u%*u%llu",
+			rx_packets,
+			tx_packets);
+			fclose(fh);
+			return 0;
+        }
+	}
+	fclose(fh);
+	return 1;
 }

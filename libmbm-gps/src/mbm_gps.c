@@ -482,13 +482,13 @@ mbm_agpsril_update_network_state(int connected, int type, int roaming,
 
     ENTER;
 
-    if ((old_conn != connected) || (old_roam != roaming) || (old_type != type)) {
+//    if ((old_conn != connected) || (old_roam != roaming) || (old_type != type)) {
         MBMLOGI("connected=%i type=%i roaming=%i, extra_info=%s",
             connected, type, roaming, extra_info);
-        old_conn = connected;
-        old_roam = roaming;
-        old_type = type;
-    }
+//        old_conn = connected;
+//        old_roam = roaming;
+//        old_type = type;
+//    }
 
     context->ril_connected = connected;
     context->ril_roaming = roaming;
@@ -788,9 +788,11 @@ int open_at_channel(void)
 
     ret = wait_for_emrdy(at_fd, TIMEOUT_EMRDY);
 
-    if (ret == CLEANUP_REQUESTED)
+    if (ret == CLEANUP_REQUESTED) {
+        if (ret == -1)
+            close(at_fd);
         return CLEANUP_REQUESTED;
-    else if (ret == -1) {
+    } else if (ret == -1) {
         close(at_fd);
         return -1;
     } else
@@ -812,8 +814,7 @@ static void main_loop(void *arg)
     int ret;
     int at_fd;
     int nmea_fd = -1;
-    int at_channel_lost;
-    int nmea_channel_lost;
+    int any_channel_lost;
     int i, at_dev, nmea_dev;
     struct stat sb;
     (void) arg;
@@ -832,8 +833,7 @@ static void main_loop(void *arg)
     }
 
     while (1) {
-        at_channel_lost = 0;
-        nmea_channel_lost = 0;
+        any_channel_lost = 0;
         at_fd = open_at_channel();
         if (at_fd == CLEANUP_REQUESTED)
             goto exit;
@@ -877,7 +877,7 @@ static void main_loop(void *arg)
         epoll_register(epoll_fd, cmd_fd);
         epoll_register(epoll_fd, nmea_fd);
 
-        while (!nmea_channel_lost) {
+        while (!any_channel_lost) {
             struct epoll_event event[2];
             int nevents;
             nevents = epoll_wait(epoll_fd, event, 2, -1);
@@ -894,7 +894,8 @@ static void main_loop(void *arg)
                     MBMLOGE("EPOLLERR or EPOLLHUP after epoll_wait(%x)!", event[i].events);
                     if (event[i].data.fd == nmea_fd) {
                         MBMLOGW("NMEA channel lost. Will try to recover.");
-                        nmea_channel_lost = 1;
+                        any_channel_lost = 1;
+                        continue;
                     }
                 }
 
@@ -927,8 +928,9 @@ static void main_loop(void *arg)
                                                         __FUNCTION__);
                             at_reader_close();
                             gpsctrl_set_device_is_ready(0);
-                            at_channel_lost = 1;
+                            any_channel_lost = 1;
                             MBMLOGW("AT channel lost. Will try to recover");
+                            continue;
                             break;
                         case CMD_QUIT:
                             goto exit;
@@ -945,14 +947,15 @@ static void main_loop(void *arg)
                     MBMLOGE("epoll_wait() returned unkown event %x", event[i].events);
             }
         }
-
+        ALOGI("gpsctrl_set_device_is_ready0");
         gpsctrl_set_device_is_ready(0);
+        ALOGI("epoll_deregister");
         epoll_deregister(epoll_fd, cmd_fd);
         epoll_deregister(epoll_fd, nmea_fd);
-
+       ALOGI("gpsctrl_cleanup");
 retry:
         gpsctrl_cleanup();
-
+        ALOGI("status_callback");
         if (context->gps_status.status != GPS_STATUS_ENGINE_OFF) {
             context->gps_status.status = GPS_STATUS_ENGINE_OFF;
             context->status_callback(&context->gps_status);
@@ -963,14 +966,14 @@ retry:
            devices is being removed from filesystem */
         i = TIMEOUT_DEVICE_REMOVED;
         do {
+            sleep(1);
             at_dev = (0 == stat(ctrlcontext->at_dev, &sb));
             nmea_dev = (0 == stat(ctrlcontext->nmea_dev, &sb));
             if (at_dev || nmea_dev) {
-                MBMLOGD("Waiting for %s%s%s to be removed (%d)...",
+                ALOGD("Waiting for %s%s%s to be removed (%d)...",
                     at_dev ? ctrlcontext->at_dev : "",
                     at_dev && nmea_dev ? " and ": "",
                     nmea_dev ? ctrlcontext->nmea_dev : "", i);
-                sleep(1);
                 i--;
             }
         } while ((at_dev || nmea_dev) && i);
@@ -1174,7 +1177,7 @@ static void mbm_gps_cleanup(void)
 
     context->gps_initiated = 0;
 
-    MBMLOGD("%s, waiting for main thread to exit", __FUNCTION__);
+    ALOGI("%s, waiting for main thread to exit", __FUNCTION__);
     pthread_mutex_lock(&context->cleanup_mutex);
 
     add_pending_command(CMD_QUIT);
@@ -1182,10 +1185,10 @@ static void mbm_gps_cleanup(void)
 
     pthread_cond_wait(&context->cleanup_cond, &context->cleanup_mutex);
 
-    MBMLOGD("%s, stopping service handler", __FUNCTION__);
+    ALOGI("%s, stopping service handler", __FUNCTION__);
     service_handler_stop();
 
-    MBMLOGD("%s, cleanup gps ctrl", __FUNCTION__);
+    ALOGI("%s, cleanup gps ctrl", __FUNCTION__);
     gpsctrl_cleanup();
 
     pthread_mutex_unlock(&context->cleanup_mutex);
@@ -1248,6 +1251,8 @@ static int mbm_gps_stop(void)
         err = gpsctrl_stop();
         if (err < 0)
             MBMLOGE("Error stopping gps");
+        else
+            MBMLOGI("GPS Stoppped");
     }
 
     context->gps_started = 0;
@@ -1370,7 +1375,7 @@ mbm_gps_set_position_mode(GpsPositionMode mode,
     (void) preferred_time;
     (void) *get_mode_name;
 
-    MBMLOGV("%s:enter  %s min_interval = %d recurrence=%d pref_time=%d",
+    MBMLOGI("%s:enter  %s min_interval = %d recurrence=%d pref_time=%d",
          __FUNCTION__, get_mode_name(mode), min_interval, recurrence,
          preferred_time);
 

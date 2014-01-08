@@ -166,11 +166,11 @@ void nmea_close (void)
     ENTER;
 
     if (context->nmea_fd >= 0) {
-        MBMLOGV("%s, closing fd=%d", __FUNCTION__, context->nmea_fd);
+        ALOGI("%s, closing nmea fd=%d", __FUNCTION__, context->nmea_fd);
         if (close(context->nmea_fd) != 0)
             MBMLOGE("%s, failed to close fd %d!", __FUNCTION__, context->nmea_fd);
     } else {
-        MBMLOGV("%s, fd already closed", __FUNCTION__);
+        ALOGW("%s, fd already closed", __FUNCTION__);
         EXIT;
         return;
     }

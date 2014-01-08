@@ -55,4 +55,6 @@ void Get_GSM_NCIs(RIL_Token t);
 void Get_WCDMA_NCIs(RIL_Token t);
 void No_NCIs(RIL_Token t);
 
+void startPollFastDormancy(void);
+
 #endif

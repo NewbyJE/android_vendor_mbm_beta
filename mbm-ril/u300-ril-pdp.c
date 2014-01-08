@@ -37,6 +37,7 @@
 #include <cutils/properties.h>
 #include "u300-ril-error.h"
 #include "u300-ril-pdp.h"
+#include "u300-ril-network.h"
 
 #define LOG_TAG "RIL"
 #include <utils/Log.h>
@@ -737,6 +738,8 @@ down:
     free(addresses);
     free(gateways);
     free(dnses);
+
+    startPollFastDormancy();
 
     return;
 

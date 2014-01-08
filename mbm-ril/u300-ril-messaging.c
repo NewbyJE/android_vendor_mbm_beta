@@ -27,6 +27,7 @@
 #include "at_tok.h"
 #include "misc.h"
 #include "u300-ril.h"
+#include "u300-ril-device.h"
 
 #define LOG_TAG "RIL"
 #include <utils/Log.h>
@@ -854,6 +855,11 @@ void checkMessageStorageReady(void *p)
     int err;
     struct timespec trigger_time;
     (void) p;
+
+    if (RADIO_STATE_SIM_READY != getRadioState()) {
+        ALOGE("%s() SIM not ready, aborting!", __func__);
+        return;
+    }
 
     err = at_send_command_singleline("AT+CPMS?","+CPMS: ", NULL);
     if (err == AT_NOERROR) {

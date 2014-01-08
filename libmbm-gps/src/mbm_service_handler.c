@@ -293,7 +293,7 @@ static void parse_message(char *msg)
             pgps_read_data(id, path);
         }
     } else {
-        MBMLOGD("%s, unknown message from mbm service received(%s)", __FUNCTION__, data);
+        MBMLOGD("%s, unknown message from mbm service received(%s)", __FUNCTION__, msg);
     }
 
     free(data);
@@ -311,7 +311,7 @@ static void* socket_loop(void* arg)
     (void) arg;
 
     ENTER;
-
+    ALOGI("socket_loop() enter");
     if ((ret = internal_init()) < 0) {
         MBMLOGE("Error initializing socket");
         EXIT;
@@ -368,6 +368,7 @@ int service_handler_init(int loglevel)
         return -1;
     }
 
+    ALOGI("pthread_create socket_loop");
     ret = pthread_create(&socket_thread, NULL, socket_loop, NULL);
     if (ret < 0) {
         ALOGE("%s error creating socket thread", __FUNCTION__);
@@ -382,7 +383,7 @@ int service_handler_stop(void)
     ServiceContext *context = get_service_context();
 
     ENTER;
-
+    ALOGI("service_handler_stop sending QUIT");
     service_handler_send_message(CMD_SERVICE_QUIT, "");
     close(context->socket);
 

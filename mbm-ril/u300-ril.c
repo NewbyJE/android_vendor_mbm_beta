@@ -310,8 +310,9 @@ static void requestScreenState(void *data, size_t datalen, RIL_Token t)
     if (datalen < sizeof(int *))
         goto error;
 
-    /* No point of enabling unsolicited if radio is off */
-    if (RADIO_STATE_OFF == getRadioState())
+    /* No point of enabling unsolicited if radio is off
+       or SIM is locked */
+    if (RADIO_STATE_SIM_READY != getRadioState())
         goto success;
 
     s_screenState = ((int *) data)[0];
@@ -1215,6 +1216,7 @@ static void *queueRunner(void *param)
            device is being removed from filesystem */
 
         int i = TIMEOUT_DEVICE_REMOVED;
+        sleep(1);
         while((i--) && (stat(queueArgs->device_path, &sb) == 0)) {
             ALOGD("%s() Waiting for %s to be removed (%d)...", __func__,
                 queueArgs->device_path, i);

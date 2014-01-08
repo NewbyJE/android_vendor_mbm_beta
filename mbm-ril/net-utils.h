@@ -27,5 +27,6 @@ int ifc_add_host_route(const char *name);
 int ifc_configure(const char *ifname,
         in_addr_t address,
         in_addr_t gateway);
-
+int ifc_statistics(const char *ifname, unsigned long long *rx_packets
+                                     , unsigned long long *tx_packets );
 #endif

@@ -652,7 +652,7 @@ static void *readerLoop(void *arg)
     set_at_context((struct atcontext *) arg);
     context = get_at_context();
 
-    MBMLOGV("Entering readerLoop()");
+    ALOGI("Entering readerLoop()");
 
     for (;;) {
         const char * line;
@@ -686,7 +686,7 @@ static void *readerLoop(void *arg)
     }
 
     onReaderClosed();
-    MBMLOGV("Exiting readerLoop()");
+    ALOGI("Exiting readerLoop()");
     return NULL;
 }
 
@@ -897,6 +897,7 @@ int at_reader_open(int fd, ATUnsolHandler h, int loglevel)
     pthread_attr_init (&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
+    ALOGI("pthread_create readerLoop");
     ret = pthread_create(&context->tid_reader, &attr, readerLoop, context);
 
     if (ret < 0) {
@@ -923,11 +924,11 @@ void at_reader_close(void)
     ENTER;
 
     if (context->fd >= 0) {
-        MBMLOGV("%s, closing fd=%d", __FUNCTION__, context->fd);
+        ALOGI("%s, closing at reader fd=%d", __FUNCTION__, context->fd);
         if (close(context->fd) != 0)
             MBMLOGE("%s, failed to close fd %d!", __FUNCTION__, context->fd);
     } else {
-        MBMLOGV("%s, fd already closed", __FUNCTION__);
+        ALOGW("%s, fd already closed", __FUNCTION__);
         EXIT;
         return;
     }
@@ -943,6 +944,7 @@ void at_reader_close(void)
     pthread_mutex_unlock(&context->commandmutex);
 
     /* Kick readerloop. */
+    ALOGI("kick readerLoop");
     write(context->readerCmdFds[1], "x", 1);
 
     EXIT;
